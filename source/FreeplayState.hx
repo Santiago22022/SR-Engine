@@ -1,4 +1,4 @@
-﻿package;
+package;
 
 import WeekData;
 import editors.ChartingState;
@@ -56,9 +56,7 @@ class FreeplayState extends MusicBeatState
 		Paths.clearUnusedMemory();
 		Paths.gc();
 
-		#if sys
 		if (PlayState.process != null) PlayState.stopRender();
-		#end
 
 		persistentUpdate = true;
 		PlayState.isStoryMode = false;
@@ -580,7 +578,7 @@ class FreeplayState extends MusicBeatState
 						noteCount += section.sectionNotes.length;
 						requiredRamLoad += 72872 * section.sectionNotes.length;
 						}
-						CoolUtil.coolError("There are " + FlxStringUtil.formatMoney(noteCount, false) + " notes in this chart!\nWith Show Notes turned on, you'd need " + FlxStringUtil.formatBytes(requiredRamLoad / 2) + " of ram to load this.", "SR Engine Chart Diagnosis");
+						CoolUtil.coolError("There are " + FlxStringUtil.formatMoney(noteCount, false) + " notes in this chart!\nWith Show Notes turned on, you'd need " + FlxStringUtil.formatBytes(requiredRamLoad / 2) + " of ram to load this.", "JS Engine Chart Diagnosis");
 					}
 					player.playingMusic = true;
 					player.curTime = 0;
@@ -608,39 +606,18 @@ class FreeplayState extends MusicBeatState
 				}
 				var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
 				var songLowercase:String = Paths.formatToSongPath(songs[curSelected].songName);
-					#if MODS_ALLOWED
-					if(instPlaying != curSelected && !player.playingMusic)
-					{
-						#if sys
-						if(sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)))
-							playSong();
-						else
-							songJsonPopup();
-						#else
-						var instResource:Dynamic = Paths.inst(songs[curSelected].songName, CoolUtil.difficulties[curDifficulty]);
-						var instAvailable:Bool = false;
-						if (Std.isOfType(instResource, String))
-							instAvailable = OpenFlAssets.exists(cast instResource);
-						else
-							instAvailable = instResource != null;
-
-						if(instAvailable || OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop)) || OpenFlAssets.exists(Paths.modsJson(songLowercase + '/' + poop)))
-							playSong();
-						else
-							songJsonPopup();
-						#end
-					}
-					#else
-					if(instPlaying != curSelected && !player.playingMusic)
-					{
-					var instResource:Dynamic = Paths.inst(songs[curSelected].songName, CoolUtil.difficulties[curDifficulty]);
-					var instAvailable:Bool = false;
-					if (Std.isOfType(instResource, String))
-						instAvailable = OpenFlAssets.exists(cast instResource);
+				#if MODS_ALLOWED
+				if(instPlaying != curSelected && !player.playingMusic)
+				{
+					if(sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)))
+						playSong();
 					else
-						instAvailable = instResource != null;
-
-					if(instAvailable || OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop)))
+						songJsonPopup();
+				}
+				#else
+				if(instPlaying != curSelected && !player.playingMusic)
+				{
+					if(OpenFlAssets.exists(Paths.inst(songLowercase + '/' + poop, CoolUtil.difficulties[curDifficulty].toLowerCase())) || OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop)))
 						playSong();
 					else
 						songJsonPopup();
@@ -662,20 +639,7 @@ class FreeplayState extends MusicBeatState
 
 				CoolUtil.currentDifficulty = CoolUtil.difficultyString();
 
-				var hasSongFiles:Bool = false;
-				#if sys
-				hasSongFiles = sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop));
-				#end
-				if (!hasSongFiles)
-				{
-					#if MODS_ALLOWED
-					hasSongFiles = OpenFlAssets.exists(Paths.modsJson(songLowercase + '/' + poop));
-					#end
-					if (!hasSongFiles)
-						hasSongFiles = OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop));
-				}
-
-				if(hasSongFiles) {
+				if(sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop)) || OpenFlAssets.exists(Paths.modsJson(songLowercase + '/' + poop)) || OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop))) {
 				PlayState.SONG = Song.loadFromJson(poop, songLowercase);
 				PlayState.storyDifficulty = curDifficulty;
 
@@ -700,17 +664,13 @@ class FreeplayState extends MusicBeatState
 				destroyFreeplayVocals();
 
 						} else {
-						#if sys
 						if(sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())) && !sys.FileSystem.exists(Paths.json(poop + '/' + poop))) { //the json doesn't exist, but the song files do, or you put a typo in the name
-								CoolUtil.coolError("The JSON's name does not match with  " + poop + "!\nTry making them match.", "SR Engine Anti-Crash Tool");
+								CoolUtil.coolError("The JSON's name does not match with  " + poop + "!\nTry making them match.", "JS Engine Anti-Crash Tool");
 						} else if(sys.FileSystem.exists(Paths.json(poop + '/' + poop)) && !sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())))  {//the json exists, but the song files don't
-								CoolUtil.coolError("Your song seems to not have an Inst.ogg, check the folder name in 'songs'!", "SR Engine Anti-Crash Tool");
+								CoolUtil.coolError("Your song seems to not have an Inst.ogg, check the folder name in 'songs'!", "JS Engine Anti-Crash Tool");
 					} else if(!sys.FileSystem.exists(Paths.json(poop + '/' + poop)) && !sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase()))) { //neither the json nor the song files actually exist
-						CoolUtil.coolError("It appears that " + poop + " doesn't actually have a JSON, nor does it actually have voices/instrumental files!\nMaybe try fixing its name in weeks/" + WeekData.getWeekFileName() + "?", "SR Engine Anti-Crash Tool");
+						CoolUtil.coolError("It appears that " + poop + " doesn't actually have a JSON, nor does it actually have voices/instrumental files!\nMaybe try fixing its name in weeks/" + WeekData.getWeekFileName() + "?", "JS Engine Anti-Crash Tool");
 					}
-					#else
-					CoolUtil.coolError("Required chart or audio files are missing for " + poop + " on this platform.", "SR Engine Anti-Crash Tool");
-					#end
 				}
 			}
 			else if (controls.RESET && !player.playingMusic) {
@@ -969,4 +929,3 @@ class SongMetadata
 		if(this.folder == null) this.folder = '';
 	}
 }
-

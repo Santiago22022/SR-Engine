@@ -1,4 +1,4 @@
-﻿package options;
+package options;
 
 import Note;
 import StrumNote;
@@ -555,7 +555,7 @@ class NotesSubState extends MusicBeatSubstate
 		if (onPixel && !Paths.fileExists('images/pixelUI/' + Paths.defaultSkin + '.png', IMAGE))
 		{
 			CoolUtil.coolError("HEY! Your Noteskin doesn't have any Pixel sprites. The game will revert to non-pixel notes to prevent a crash."
-			+ "\n\nIf it DOES have Pixel sprites, make sure they're located in 'images/pixelUI/noteskins/'.", "SR Engine Anti-Crash Tool");
+			+ "\n\nIf it DOES have Pixel sprites, make sure they're located in 'images/pixelUI/noteskins/'.", "JS Engine Anti-Crash Tool");
 			onPixel = false;
 			spawnNotes();
 			return;
@@ -723,4 +723,3 @@ class NotesSubState extends MusicBeatSubstate
 	function getShaderColor() return dataArray[curSelectedNote][curSelectedMode];
 	function getShader() return Note.globalRgbShaders[curSelectedNote];
 }
-

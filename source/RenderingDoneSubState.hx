@@ -22,9 +22,7 @@ class RenderingDoneSubState extends MusicBeatSubstate {
 
 	override public function create() {
 		super.create();
-#if sys
 		PlayState.stopRender();
-#end
 
 		var leDate = Date.now();
 		if (leDate.getHours() >= 6 && leDate.getHours() <= 18) {

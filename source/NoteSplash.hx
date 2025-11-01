@@ -24,16 +24,14 @@ class NoteSplash extends FlxSprite
 	public function new(x:Float = 0, y:Float = 0, ?note:Int = 0) {
 		super(x, y);
 
-		if(PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0 && Paths.fileExists('images/' + PlayState.SONG.splashSkin + '.png', IMAGE)) texture = PlayState.SONG.splashSkin;
+		if(PlayState.SONG.splashSkin.length > 0 && Paths.fileExists('images/' + PlayState.SONG.splashSkin + '.png', IMAGE)) texture = PlayState.SONG.splashSkin;
 		else texture = defaultNoteSplash + getSplashSkinPostfix();
 
 		rgbShader = new PixelSplashShaderRef();
 		shader = rgbShader.shader;
 
-		if (!Paths.splashConfigs.exists(texture)) {
-			Paths.initSplashConfig(texture); // Initialize the config if it doesn't exist
-		}
-		config = Paths.splashConfigs.get(texture); // Get the config from the map (might be null if initialization failed)
+		if (!Paths.splashConfigs.exists(texture)) config = Paths.initSplashConfig(texture);
+		config = Paths.splashConfigs.get(texture);
 
 		setupNoteSplash(x, y, note);
 		antialiasing = ClientPrefs.globalAntialiasing;
@@ -51,7 +49,7 @@ class NoteSplash extends FlxSprite
 		alpha = 0.6;
 		shader = (ClientPrefs.enableColorShader ? rgbShader.shader : null);
 
-		if(note != null && note.noteSplashData != null && note.noteSplashData.texture != null && note.noteSplashData.texture.length > 0 && Paths.fileExists('images/' + note.noteSplashData.texture + '.png', IMAGE)) texture = note.noteSplashData.texture;
+		if(note != null && note.noteSplashData.texture.length > 0 && Paths.fileExists('images/' + note.noteSplashData.texture + '.png', IMAGE)) texture = note.noteSplashData.texture;
 
 		if(textureLoaded != texture) {
 			loadAnims(texture);
@@ -94,11 +92,7 @@ class NoteSplash extends FlxSprite
 
 		animation.play('note' + splashToPlay + '-' + (animNum), true);
 
-		if(animation.curAnim != null) {
-			var fpsMin = (config != null) ? config.minFps : minFps;
-			var fpsMax = (config != null) ? config.maxFps : maxFps;
-			animation.curAnim.frameRate = FlxG.random.int(fpsMin, fpsMax);
-		}
+		if(animation.curAnim != null)animation.curAnim.frameRate = FlxG.random.int(config.minFps, config.maxFps);
 	}
 
 	public static function getSplashSkinPostfix()

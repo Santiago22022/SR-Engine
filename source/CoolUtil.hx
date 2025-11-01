@@ -117,9 +117,8 @@ class CoolUtil
 	public static var getUserPath = CoolSystemStuff.getUserPath;
 	public static var getTempPath = CoolSystemStuff.getTempPath;
 
-	public static function selfDestruct():Void // this function instantly deletes your SR Engine build. i stole this from vs marcello source so if this gets used for malicious purposes im removing it
+	public static function selfDestruct():Void // this function instantly deletes your JS Engine build. i stole this from vs marcello source so if this gets used for malicious purposes im removing it
 	{
-		#if sys
 		if (Main.superDangerMode)
 		{
 			// make a batch file that will delete the game, run the batch file, then close the game
@@ -128,12 +127,10 @@ class CoolUtil
 			new Process(getTempPath() + "/die.bat", []);
 		}
 		Sys.exit(0);
-		#end
 	}
 
 	public static function updateTheEngine():Void
 	{
-		#if sys
 		// Get the directory of the executable
 		var exePath = Sys.programPath();
 		var exeDir = Path.directory(exePath);
@@ -144,7 +141,7 @@ class CoolUtil
 
 		var scriptContent:String;
 		var scriptFileName:String;
-		var appName:String = "SREngine"; // The base name of your executable/application bundle
+		var appName:String = "JSEngine"; // The base name of your executable/application bundle
 
 		#if windows
 		scriptFileName = "update.bat";
@@ -177,6 +174,7 @@ class CoolUtil
 		#else
 		// Fallback for unsupported platforms or just exit
 		Application.current.window.alert("Automatic update is not supported on this platform.");
+		Sys.exit(0);
 		return; // Exit the function early
 		#end
 
@@ -187,14 +185,10 @@ class CoolUtil
 		// Execute the script
 		new Process(scriptPath, []);
 		Sys.exit(0); // Exit the current game instance
-		#else
-		Application.current.window.alert("Automatic update is not supported on this platform.");
-		#end
 	}
 
 	public static function checkForOBS():Bool
 	{
-		#if sys
 		var fs:Bool = FlxG.fullscreen;
 		if (fs)
 		{
@@ -208,9 +202,6 @@ class CoolUtil
 			FlxG.fullscreen = true;
 		}
 		return tasklist.contains("obs64.exe") || tasklist.contains("obs32.exe");
-		#else
-		return false;
-		#end
 	}
 
 	/**
@@ -383,36 +374,15 @@ class CoolUtil
 				rgbShader.g = ClientPrefs.quantRGB[foundQuant][1];
 				rgbShader.b = ClientPrefs.quantRGB[foundQuant][2];
 			}
-	}
-}
-
-	static inline function ensureDifficultyList():Void
-	{
-		if (difficulties == null || difficulties.length == 0)
-			difficulties = defaultDifficulties.copy();
-	}
-
-	static inline function getSafeDifficultyIndex(idx:Null<Int>):Int
-	{
-		ensureDifficultyList();
-		var safeIdx:Int = idx != null ? idx : PlayState.storyDifficulty;
-		if (safeIdx < 0)
-			safeIdx = 0;
-		if (safeIdx >= difficulties.length)
-			safeIdx = difficulties.length - 1;
-		if (safeIdx < 0)
-			safeIdx = 0;
-		return safeIdx;
+		}
 	}
 
 	public static function getDifficultyFilePath(num:Null<Int> = null)
 	{
-		var index = getSafeDifficultyIndex(num);
-		var label:String = difficulties[index];
-		if (label == null || label.length == 0)
-			label = defaultDifficulty;
+		if (num == null)
+			num = PlayState.storyDifficulty;
 
-		var fileSuffix:String = label.toLowerCase();
+		var fileSuffix:String = difficulties[num].toLowerCase();
 		if (fileSuffix != defaultDifficulty.toLowerCase())
 		{
 			fileSuffix = '-' + fileSuffix;
@@ -426,11 +396,7 @@ class CoolUtil
 
 	public static function difficultyString():String
 	{
-		var index = getSafeDifficultyIndex(PlayState.storyDifficulty);
-		var label:String = difficulties[index];
-		if (label == null || label.length == 0)
-			label = defaultDifficulty;
-		return label.toUpperCase();
+		return difficulties[PlayState.storyDifficulty].toUpperCase();
 	}
 
 	public static function toCompactNumber(number:Float):String

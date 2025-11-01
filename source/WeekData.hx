@@ -77,7 +77,7 @@ class WeekData {
 	{
 		weeksList = [];
 		weeksLoaded.clear();
-		#if (MODS_ALLOWED && sys)
+		#if MODS_ALLOWED
 		var disabledMods:Array<String> = [];
 
 		var modsListPath:String = 'modsList.txt';
@@ -146,7 +146,7 @@ class WeekData {
 			}
 		}
 
-		#if (MODS_ALLOWED && sys)
+		#if MODS_ALLOWED
 		for (i in 0...directories.length) {
 			var directory:String = directories[i] + 'weeks/';
 			if(FileSystem.exists(directory)) {
@@ -218,11 +218,7 @@ class WeekData {
 
 	private static function getWeekFile(path:String):WeekFile {
 		var rawJson:String = null;
-		#if js
-		if(OpenFlAssets.exists(path)) {
-			rawJson = Assets.getText(path);
-		}
-		#elseif (MODS_ALLOWED && sys)
+		#if MODS_ALLOWED
 		if(FileSystem.exists(path)) {
 			rawJson = File.getContent(path);
 		}
@@ -266,7 +262,7 @@ class WeekData {
 	{
 		Paths.currentModDirectory = '';
 
-		#if (MODS_ALLOWED && sys)
+		#if (MODS_ALLOWED)
 		if (FileSystem.exists("modsList.txt"))
 		{
 			var list:Array<String> = CoolUtil.listFromString(File.getContent("modsList.txt"));

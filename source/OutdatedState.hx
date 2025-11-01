@@ -42,7 +42,7 @@ class OutdatedState extends MusicBeatState
 		checker.updateHitbox();
 
 		warnText = new FlxText(0, 10, FlxG.width,
-			"HEY! Your SR Engine is outdated!\n"
+			"HEY! Your JS Engine is outdated!\n"
 			+ 'v' + MainMenuState.psychEngineJSVersion + ' < v' + TitleState.updateVersion + '\n'
 			,32);
 		warnText.setFormat("VCR OSD Mono", 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);

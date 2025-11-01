@@ -13,14 +13,6 @@ import openfl.geom.Rectangle;
 import openfl.media.Sound;
 import openfl.system.System;
 import openfl.utils.AssetType;
-#if html5
-import lime.app.Future;
-#end
-import openfl.utils.Assets as OpenFlAssets;
-
-#if sys
-import sys.FileSystem;
-#end
 
 #if cpp
 import cpp.vm.Gc;
@@ -77,10 +69,7 @@ class Paths
 	//Function that initializes the first note. This way, we can recycle the notes
 	public static function initDefaultSkin(?noteSkin:String, ?inEditor:Bool = false)
 	{
-		var choice = noteSkin;
-		if (choice == null)
-			choice = '';
-		if (choice.length > 0) defaultSkin = choice;
+		if (noteSkin.length > 0) defaultSkin = noteSkin;
 		else if (!PlayState.isPixelStage) defaultSkin = 'noteskins/NOTE_assets' + Note.getNoteSkinPostfix();
 		else defaultSkin = 'noteskins/NOTE_assets';
 		trace(defaultSkin);
@@ -88,18 +77,9 @@ class Paths
 	public static function initNote(?noteSkin:String)
 	{
 		// Do this to be able to just copy over the note animations and not reallocate it
-		var choice = noteSkin;
-		if (choice == null || choice.length < 1) choice = defaultSkin;
+		if (noteSkin.length < 1) noteSkin = defaultSkin;
 		var spr:FlxSprite = new FlxSprite();
-		var frames = getSparrowAtlas(choice);
-		if (frames == null && choice != defaultSkin)
-		{
-			choice = defaultSkin;
-			frames = getSparrowAtlas(choice);
-		}
-		if (frames == null)
-			frames = getSparrowAtlas('noteskins/NOTE_assets');
-		spr.frames = frames;
+		spr.frames = getSparrowAtlas(noteSkin.length > 1 ? noteSkin : defaultSkin);
 
 		// Use a for loop for adding all of the animations in the note spritesheet, otherwise it won't find the animations for the next recycle
 		for (d in 0...Note.colArray.length)
@@ -109,8 +89,8 @@ class Paths
 			spr.animation.addByPrefix(Note.colArray[d] + 'hold', Note.colArray[d] + ' hold piece');
 			spr.animation.addByPrefix(Note.colArray[d] + 'Scroll', Note.colArray[d] + '0');
 		}
-		noteSkinFramesMap.set(choice, spr.frames);
-		noteSkinAnimsMap.set(choice, spr.animation);
+		noteSkinFramesMap.set(noteSkin, spr.frames);
+		noteSkinAnimsMap.set(noteSkin, spr.animation);
 	}
 
 	//Note Splash initialization
@@ -169,9 +149,7 @@ class Paths
 	public static function initSplashConfig(skin:String)
 	{
 		var path:String = Paths.getSharedPath('images/' + skin + '.txt');
-		#if MODS_ALLOWED
 		if (!FileSystem.exists(path)) path = Paths.modsTxt(skin);
-		#end
 		if (!FileSystem.exists(path)) path = Paths.getSharedPath('images/noteSplashes/noteSplashes' + NoteSplash.getSplashSkinPostfix() + '.txt');
 
 		var configFile:Array<String> = CoolUtil.coolTextFile(path);
@@ -338,42 +316,14 @@ class Paths
 		FlxG.bitmap.remove(graphic);
 	}
 
-static public var currentModDirectory:String = '';
-static public var currentLevel:String;
-static public function setCurrentLevel(name:String)
-{
-	currentLevel = name.toLowerCase();
-	#if html5
-	ensureHtmlLibrary(currentLevel);
-	if (currentLevel != null && currentLevel != 'shared')
-		ensureHtmlLibrary('shared');
-	#end
-}
-
-#if html5
-static function ensureHtmlLibrary(libraryName:String):Void
-{
-	if (libraryName == null || libraryName.length == 0)
-		return;
-	var lib = libraryName.toLowerCase();
-	if (OpenFlAssets.getLibrary(lib) != null)
-		return;
-	try
+	static public var currentModDirectory:String = '';
+	static public var currentLevel:String;
+	static public function setCurrentLevel(name:String)
 	{
-		var future = OpenFlAssets.loadLibrary(lib);
-		if (future != null)
-		{
-			future.onComplete(function(_) {});
-		}
+		currentLevel = name.toLowerCase();
 	}
-	catch (e:Dynamic)
-	{
-		// ignore missing library, fallback paths will handle it
-	}
-}
-#end
 
-public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Null<String> = null, ?modsAllowed:Bool = false):String
+	public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Null<String> = null, ?modsAllowed:Bool = false):String
 	{
 		#if MODS_ALLOWED
 		if(modsAllowed)
@@ -394,37 +344,23 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 
 		if (currentLevel != null)
 		{
+			var levelPath:String = '';
 			if(currentLevel != 'shared') {
-				var levelPath:String = getLibraryPathForce(file, currentLevel);
-				if (levelPath != null && levelPath.length > 0)
-				{
-					#if sys
-					if (FileSystem.exists(levelPath))
-						return levelPath;
-					#end
-					if (OpenFlAssets.exists(levelPath, type) || levelPath.indexOf(':') != -1)
-						return levelPath;
+				levelPath = getLibraryPathForce(file, currentLevel);
+				if (OpenFlAssets.exists(levelPath, type)){
+					//trace(levelPath);
+					return levelPath;
 				}
 			}
 
-			var sharedPath:String = getLibraryPathForce(file, "shared");
-			if (sharedPath != null && sharedPath.length > 0)
-			{
-				#if sys
-				if (FileSystem.exists(sharedPath))
-					return sharedPath;
-				#end
-				if (OpenFlAssets.exists(sharedPath, type) || sharedPath.indexOf(':') != -1)
-					return sharedPath;
+			levelPath = getLibraryPathForce(file, "shared");
+			if (OpenFlAssets.exists(levelPath, type)){
+				//trace(levelPath);
+				return levelPath;
 			}
 		}
-
-		var preloadPath:String = getPreloadPath(file);
-		#if sys
-		if (FileSystem.exists(preloadPath))
-			return preloadPath;
-		#end
-		return preloadPath;
+		//trace(getPreloadPath(file));
+		return getPreloadPath(file);
 	}
 
     public static inline function readDirectory(path:String):Array<String> {
@@ -453,41 +389,22 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
         #end
     }
 
-	static public function getLibraryPath(file:String, library = "preload"):String
+	static public function getLibraryPath(file:String, library = "preload")
 	{
 		return if (library == "preload" || library == "default") getPreloadPath(file); else getLibraryPathForce(file, library);
 	}
 
-	static function getLibraryPathForce(file:String, library:String, ?level:String):String
+	inline static function getLibraryPathForce(file:String, library:String, ?level:String)
 	{
-	if (level == null)
-		level = library;
-	var directLibraryPath = '$library:$file';
-	var legacyLibraryPath = '$library:assets/$level/$file';
-	#if html5
-	if (OpenFlAssets.exists(directLibraryPath))
-		return directLibraryPath;
-	if (OpenFlAssets.exists(legacyLibraryPath))
-		return legacyLibraryPath;
-	#end
-	if (OpenFlAssets.exists(directLibraryPath))
-		return directLibraryPath;
-
-	if (OpenFlAssets.exists(legacyLibraryPath))
-		return legacyLibraryPath;
-
-	var relativeLibraryPath = 'assets/$level/$file';
-	if (OpenFlAssets.exists(relativeLibraryPath))
-		return relativeLibraryPath;
-	#if sys
-	if (FileSystem.exists(relativeLibraryPath))
-		return relativeLibraryPath;
-	#end
-	#if html5
-	return legacyLibraryPath;
-	#end
-	return 'assets/$level/$file';
-}
+		if (level == null)
+			level = library;
+		var returnPath = '$library:assets/$level/$file';
+		if (OpenFlAssets.exists(returnPath)) {
+			return returnPath;
+		} else {
+			return 'assets/$level/$file';
+		}
+	}
 
 	inline public static function getPreloadPath(file:String = '')
 	{
@@ -566,26 +483,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 		var formattedDifficulty:String = formatToSongPath(difficulty);
 		if (difficulty.contains(' ')) difficulty = formattedDifficulty;
 		#if html5
-		var formattedSong:String = formatToSongPath(song);
-		var baseKey = '$formattedSong/Voices';
-		if (postfix != null && postfix.length > 0)
-			baseKey += '-' + postfix;
-		var candidates:Array<String> = [];
-		if (formattedDifficulty.length > 0)
-			candidates.push('$baseKey-$formattedDifficulty');
-		candidates.push(baseKey);
-
-		var extensions:Array<String> = [SOUND_EXT, "ogg", "mp3", "wav"];
-		for (candidate in candidates)
-		{
-			for (ext in extensions)
-			{
-				var assetPath = getPath('$candidate.$ext', SOUND, 'songs');
-				if (assetPath != null && OpenFlAssets.exists(assetPath, SOUND))
-					return assetPath;
-			}
-		}
-		return getPath('$baseKey.$SOUND_EXT', SOUND, 'songs');
+		return 'songs:assets/songs/${formatToSongPath(song)}/Voices.$SOUND_EXT';
 		#else
 		if (difficulty != null)
 		{
@@ -607,31 +505,10 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 	//Loads the instrumental. Crucial for generateSong
 	static public function inst(song:String, ?difficulty:String = ''):Any
 	{
-		if (difficulty == null)
-			difficulty = '';
-
-		var formattedDifficulty:String = difficulty.length > 0 ? formatToSongPath(difficulty) : '';
-		if (formattedDifficulty.length > 0 && difficulty.indexOf(' ') >= 0)
-			difficulty = formattedDifficulty;
-
+		var formattedDifficulty:String = formatToSongPath(difficulty);
+		if (difficulty.contains(' ')) difficulty = formattedDifficulty;
 		#if html5
-		var formattedSong:String = formatToSongPath(song);
-		var candidates:Array<String> = [];
-		if (formattedDifficulty.length > 0)
-			candidates.push('$formattedSong/Inst-$formattedDifficulty');
-		candidates.push('$formattedSong/Inst');
-
-		var extensions:Array<String> = [SOUND_EXT, "ogg", "mp3", "wav"];
-		for (candidate in candidates)
-		{
-			for (ext in extensions)
-			{
-				var assetPath:String = getPath('$candidate.$ext', SOUND, 'songs');
-				if (assetPath != null && OpenFlAssets.exists(assetPath, SOUND))
-					return assetPath;
-			}
-		}
-		return getPath('$formattedSong/Inst.$SOUND_EXT', SOUND, 'songs');
+		return 'songs:assets/songs/${formatToSongPath(song)}/Inst.$SOUND_EXT';
 		#else
 		if (difficulty != null)
 		{
@@ -654,20 +531,14 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
             final playAprilFools:Bool = DateUtils.isAprilFools();
 
             if (playAprilFools) {
-				var aprilMusic = Paths.music('aprilFools');
-				if (aprilMusic != null)
-	                FlxG.sound.playMusic(aprilMusic, volume);
+                FlxG.sound.playMusic(Paths.music('aprilFools'), volume);
             } else {
                 final musicName = 'freakyMenu-' + ClientPrefs.daMenuMusic;
 
                 #if MODS_ALLOWED
                 playModMusic('freakyMenu', musicName, volume); // TODO: add HScript support here
                 #else
-				var menuMusic = music(musicName);
-				if (menuMusic == null)
-					menuMusic = music('freakyMenu-Default');
-                if (menuMusic != null)
-					FlxG.sound.playMusic(menuMusic, volume);
+                FlxG.sound.playMusic(music(musicName), volume);
                 #end
             }
         }
@@ -680,7 +551,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 			if (difficulty.contains(' ')) difficulty = formattedDifficulty;
 
 			var eventsKey:String = formatToSongPath(song) + '/events-${difficulty.toLowerCase()}';
-			if (fileExists('data/' + eventsKey + '.json', TEXT))
+			if (FileSystem.exists(Paths.json(eventsKey)) || FileSystem.exists(Paths.modsJson(eventsKey)))
 				return (!onlyEventsString ? eventsKey : 'events-${difficulty.toLowerCase()}');
 		}
 		var eventsKey:String = formatToSongPath(song) + '/events';
@@ -704,14 +575,6 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 			localTrackedAssets.push(key);
 			return currentTrackedAssets.get(key);
 		}
-		
-		#if html5
-		// Ensure library is loaded for HTML5
-		if (parentFolder != null && parentFolder.length > 0) {
-			ensureHtmlLibrary(parentFolder);
-		}
-		#end
-		
 		return cacheBitmap(key, parentFolder, bitmap);
 	}
 
@@ -729,7 +592,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 			if (bitmap == null)
 			{
 				trace('oh no its returning null NOOOO ($file)');
-				bitmap = new BitmapData(1, 1, true, 0x00000000);
+				return null;
 			}
 		}
 
@@ -772,14 +635,12 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 		{
 			var levelPath:String = '';
 			if(currentLevel != 'shared') {
-				var forcedTextPath:String = getLibraryPathForce(key, currentLevel);
-				levelPath = forcedTextPath;
+				levelPath = getLibraryPathForce(key, currentLevel);
 				if (FileSystem.exists(levelPath))
 					return File.getContent(levelPath);
 			}
 
-			var sharedTextPath:String = getLibraryPathForce(key, 'shared');
-			levelPath = sharedTextPath;
+			levelPath = getLibraryPathForce(key, 'shared');
 			if (FileSystem.exists(levelPath))
 				return File.getContent(levelPath);
 		}
@@ -912,61 +773,46 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 	inline static public function getSparrowAtlas(key:String, ?parentFolder:String = null):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder);
-		var data:String = null;
 		#if MODS_ALLOWED
+		var xmlExists:Bool = false;
+
 		var xml:String = modsXml(key);
-		if (FileSystem.exists(xml))
-			data = File.getContent(xml);
+		if(FileSystem.exists(xml)) xmlExists = true;
+
+		return FlxAtlasFrames.fromSparrow(imageLoaded, (xmlExists ? File.getContent(xml) : getPath('images/$key' + '.xml', TEXT, parentFolder)));
+		#else
+		return FlxAtlasFrames.fromSparrow(imageLoaded, getPath('images/$key' + '.xml', TEXT, parentFolder));
 		#end
-		if (data == null)
-		{
-			var assetPath:String = getPath('images/$key.xml', TEXT, parentFolder);
-			if (assetPath != null && OpenFlAssets.exists(assetPath))
-				data = OpenFlAssets.getText(assetPath);
-		}
-		if (data == null)
-			data = "<TextureAtlas />";
-		return FlxAtlasFrames.fromSparrow(imageLoaded, data);
 	}
 
 	inline static public function getPackerAtlas(key:String, ?parentFolder:String = null):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder);
-		var data:String = null;
 		#if MODS_ALLOWED
+		var txtExists:Bool = false;
+
 		var txt:String = modsTxt(key);
-		if (FileSystem.exists(txt))
-			data = File.getContent(txt);
+		if(FileSystem.exists(txt)) txtExists = true;
+
+		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, (txtExists ? File.getContent(txt) : getPath('images/$key' + '.txt', TEXT, parentFolder)));
+		#else
+		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, getPath('images/$key' + '.txt', TEXT, parentFolder));
 		#end
-		if (data == null)
-		{
-			var assetPath:String = getPath('images/$key.txt', TEXT, parentFolder);
-			if (assetPath != null && OpenFlAssets.exists(assetPath))
-				data = OpenFlAssets.getText(assetPath);
-		}
-		if (data == null)
-			data = "";
-		return FlxAtlasFrames.fromSpriteSheetPacker(imageLoaded, data);
 	}
 
 	inline static public function getAsepriteAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder);
-		var data:String = null;
 		#if MODS_ALLOWED
+		var jsonExists:Bool = false;
+
 		var json:String = modsImagesJson(key);
-		if (FileSystem.exists(json))
-			data = File.getContent(json);
+		if(FileSystem.exists(json)) jsonExists = true;
+
+		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, (jsonExists ? File.getContent(json) : getPath('images/$key' + '.json', TEXT, parentFolder)));
+		#else
+		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, getPath('images/$key' + '.json', TEXT, parentFolder));
 		#end
-		if (data == null)
-		{
-			var assetPath:String = getPath('images/$key.json', TEXT, parentFolder);
-			if (assetPath != null && OpenFlAssets.exists(assetPath))
-				data = OpenFlAssets.getText(assetPath);
-		}
-		if (data == null)
-			data = '{"frames":{},"meta":{}}';
-		return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, data);
 	}
 
 	inline static public function formatToSongPath(path:String) {
@@ -1038,40 +884,6 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 			return sound;
 		}
 
-		var fallbackExts:Array<String> = ["ogg", "mp3", "wav"];
-		for (ext in fallbackExts)
-		{
-			if (ext == SOUND_EXT)
-				continue;
-
-			var rawPath = getPath('$path/$key.' + ext, SOUND, library);
-			if (rawPath == null)
-				continue;
-
-			var lookupPath = rawPath;
-			if (path == 'songs')
-				lookupPath = 'songs:' + rawPath;
-
-			if (OpenFlAssets.exists(lookupPath, SOUND))
-			{
-				var colonIndex = rawPath.indexOf(':');
-				file = colonIndex >= 0 ? rawPath.substring(colonIndex + 1) : rawPath;
-				#if lime_vorbis
-				if (stream)
-					sound = OpenFlAssets.getMusic(lookupPath);
-				else
-				#end
-					sound = OpenFlAssets.getSound(lookupPath);
-
-				if (sound != null)
-				{
-					localTrackedAssets.push(file);
-					currentTrackedSounds.set(file, sound);
-					return sound;
-				}
-			}
-		}
-
 		trace('oh no its returning null NOOOO ($file)');
 		return null;
 	}
@@ -1119,9 +931,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
             final sound = Sound.fromFile(path);
             FlxG.sound.playMusic(sound, volume, true);
         } else {
-			var fallbackSound = Paths.music(fallback);
-			if (fallbackSound != null)
-	            FlxG.sound.playMusic(fallbackSound, volume);
+            FlxG.sound.playMusic(Paths.music(fallback), volume);
         }
     }
 
@@ -1188,7 +998,6 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 	static public function getModDirectories():Array<String> {
 		var list:Array<String> = [];
 		var modsFolder:String = mods();
-		#if (MODS_ALLOWED && sys)
 		if(FileSystem.exists(modsFolder)) {
 			for (folder in FileSystem.readDirectory(modsFolder)) {
 				var path = haxe.io.Path.join([modsFolder, folder]);
@@ -1197,7 +1006,6 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 				}
 			}
 		}
-		#end
 		return list;
 	}
 	#end
@@ -1223,27 +1031,13 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 		if(spriteJson != null)
 		{
 			changedAtlasJson = true;
-			#if sys
 			spriteJson = File.getContent(spriteJson);
-			#else
-			if (OpenFlAssets.exists(spriteJson))
-				spriteJson = OpenFlAssets.getText(spriteJson);
-			else
-				spriteJson = null;
-			#end
 		}
 
 		if(animationJson != null)
 		{
 			changedAnimJson = true;
-			#if sys
 			animationJson = File.getContent(animationJson);
-			#else
-			if (OpenFlAssets.exists(animationJson))
-				animationJson = OpenFlAssets.getText(animationJson);
-			else
-				animationJson = null;
-			#end
 		}
 
 		// is folder or image path

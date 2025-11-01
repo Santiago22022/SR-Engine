@@ -1,4 +1,4 @@
-﻿package options;
+package options;
 
 import Controls;
 import flixel.graphics.FlxGraphic;
@@ -26,7 +26,7 @@ class OptionsState extends MusicBeatState
 		switch(label) {
 			case 'Note Colors':
 				if (!ClientPrefs.enableColorShader)
-					CoolUtil.coolError("It appears that you don't have the 'Enable Note Colors' option enabled!\nTo prevent a crash, you cannot access this menu unless you turn the option on.\nYou can find it in the Visuals & UI menu.", "SR Engine Anti-Crash Tool");
+					CoolUtil.coolError("It appears that you don't have the 'Enable Note Colors' option enabled!\nTo prevent a crash, you cannot access this menu unless you turn the option on.\nYou can find it in the Visuals & UI menu.", "JS Engine Anti-Crash Tool");
 				else
 					openSubState(new options.NotesSubState());
 			case 'Controls':
@@ -217,4 +217,3 @@ function checkKonamiCode():Bool {
     return false;
 }
 }
-

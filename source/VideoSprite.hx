@@ -161,11 +161,28 @@ class VideoSprite extends FlxSpriteGroup {
 	#end
 }
 
-#if hxvlc
 @:nullSafety
 class FunkinVideoSprite extends FlxVideoSprite
 {
 	public var autoPause:Bool = true; // literally to just fix one measily little issue
+	/*
+	@:noCompletion
+	override private function onFocusGained():Void
+	{
+		#if !mobile
+		if (!FlxG.autoPause)
+			return;
+		#end
+
+		if (resumeOnFocus)
+		{
+			resumeOnFocus = false;
+
+			resume();
+		}
+		super.onFocusGained();
+	}
+	*/
 
 	@:noCompletion
 	override function onFocusLost():Void
@@ -186,32 +203,3 @@ class FunkinVideoSprite extends FlxVideoSprite
 		super.onFocusLost();
 	}
 }
-#else
-// Fallback minimal implementation when hxvlc isn't available so the project compiles.
-// This provides the small API surface used by the rest of the code but does not
-// provide real video playback. Enable hxvlc in your build if you want full video support.
-@:nullSafety
-class FunkinVideoSprite extends FlxSprite
-{
-	public var autoPause:Bool = true;
-	public var bitmap:Dynamic;
-
-	public function new()
-	{
-		super();
-		// minimal bitmap object with the properties the code expects
-		var b:Dynamic = {};
-		b.isPlaying = false;
-		b.formatWidth = 1;
-		b.formatHeight = 1;
-		b.onEndReached = { add: function(_:Dynamic):Void {}, dispatch: function(_:Dynamic):Void {} };
-		b.onFormatSetup = { add: function(_:Dynamic):Void {} };
-		bitmap = b;
-	}
-
-	public function load(name:String, options:Dynamic):Void {}
-	public function play():Void { bitmap.isPlaying = true; }
-	public function resume():Void { bitmap.isPlaying = true; }
-	public function pause():Void { bitmap.isPlaying = false; }
-}
-#end

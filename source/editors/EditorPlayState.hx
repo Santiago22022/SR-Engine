@@ -175,7 +175,7 @@ class EditorPlayState extends MusicBeatState
 	var startingSong:Bool = true;
 	private function generateSong(?startingPoint:Float = 0):Void
 	{
-	   		final startTime = haxe.Timer.stamp();
+	   		final startTime = Sys.time();
 
 		Conductor.changeBPM(PlayState.SONG.bpm);
 
@@ -300,7 +300,7 @@ class EditorPlayState extends MusicBeatState
 
 		generatedMusic = true;
 
-		var endTime = haxe.Timer.stamp();
+		var endTime = Sys.time();
 
 		openfl.system.System.gc();
 

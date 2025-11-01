@@ -129,23 +129,11 @@ class Character extends FlxSprite
 
 				try
 				{
-					var content:String = null;
 					#if MODS_ALLOWED
-					if (FileSystem.exists(path)) content = File.getContent(path);
+					loadCharacterFile(cast Json.parse(File.getContent(path)));
 					#else
-					if (Assets.exists(path)) content = Assets.getText(path);
+					loadCharacterFile(cast Json.parse(Assets.getText(path)));
 					#end
-					
-					if (content != null && content.length > 0) {
-						var jsonData:Dynamic = Json.parse(content);
-						if (jsonData != null) {
-							loadCharacterFile(cast jsonData);
-						} else {
-							trace('Error: JSON data is null for character "$character"');
-						}
-					} else {
-						trace('Error: Character file content is null or empty for "$character" at path: $path');
-					}
 				}
 				catch(e:Dynamic)
 				{

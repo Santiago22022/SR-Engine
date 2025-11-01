@@ -62,7 +62,7 @@ class UpdateState extends MusicBeatState
 		checker.alpha = 0.2;
 		checker.updateHitbox();
 
-		text = new FlxText(0, 0, 0, "Please wait, SR Engine is updating...", 18);
+		text = new FlxText(0, 0, 0, "Please wait, JS Engine is updating...", 18);
 		text.setFormat("VCR OSD Mono", 18, FlxColor.WHITE, CENTER, OUTLINE, FlxColor.BLACK);
 		add(text);
 		text.screenCenter(X);
@@ -284,7 +284,7 @@ class UpdateState extends MusicBeatState
 
 	function onDownloadComplete(result:openfl.events.Event)
 	{
-		var path:String = './update/temp/'; // SR Engine ' + TitleState.onlineVer + ".zip";
+		var path:String = './update/temp/'; // JS Engine ' + TitleState.onlineVer + ".zip";
 
 		if (!FileSystem.exists(path))
 		{
@@ -299,11 +299,11 @@ class UpdateState extends MusicBeatState
 		var fileBytes:Bytes = cast(zip.data, ByteArray);
 		text.text = "Update downloaded successfully, saving update file...";
 		text.screenCenter(X);
-		File.saveBytes(path + "SR Engine v" + TitleState.updateVersion + ".zip", fileBytes);
+		File.saveBytes(path + "JS Engine v" + TitleState.updateVersion + ".zip", fileBytes);
 		text.text = "Unpacking update file...";
 		text.screenCenter(X);
 
-		JSEZip.unzip(path + "SR Engine v" + TitleState.updateVersion + ".zip", "./update/raw/");
+		JSEZip.unzip(path + "JS Engine v" + TitleState.updateVersion + ".zip", "./update/raw/");
 		text.text = "Update has finished! The update will be installed shortly..";
 		text.screenCenter(X);
 

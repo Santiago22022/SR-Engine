@@ -1,4 +1,4 @@
-﻿package;
+package;
 
 // an fully working crash handler on ALL platforms
 import flixel.FlxState;
@@ -8,11 +8,6 @@ import openfl.Lib;
 import openfl.errors.Error;
 import openfl.events.ErrorEvent;
 import openfl.events.UncaughtErrorEvent;
-#if sys
-import sys.FileSystem;
-import sys.io.File;
-import Sys;
-#end
 
 /**
  * Crash Handler.
@@ -83,16 +78,14 @@ class CrashHandler
 		"uhhhhhhhhhhhhhhhh... i dont think this is normal...",
 		"lobotomy moment",
 		"ARK: Survival Evolved",
-		"my names SR Engine, and I'm an crashaholic",
-		"SR Engine, more like buggy engine lol"
+		"my names JS Engine, and I'm an crashaholic",
+		"JS, more like buggy engine lol"
 	];
 
 	public static function init():Void
 	{
 		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onUncaughtError);
-		#if cpp
 		untyped __global__.__hxcpp_set_critical_error_handler(onError);
-		#end
 	}
 
 	private static function onUncaughtError(e:UncaughtErrorEvent):Void
@@ -125,7 +118,7 @@ class CrashHandler
 			dateNow = dateNow.replace(" ", "_");
 			dateNow = dateNow.replace(":", "'");
 
-			path = "crash/SREngine_" + dateNow + ".log";
+			path = "crash/JSEngine_" + dateNow + ".log";
 
 			for (stackItem in stack)
 			{
@@ -152,21 +145,17 @@ class CrashHandler
 			errorMessage += 'Uncaught Error: $m\n\n$stackLabel';
 			trace(errorMessage);
 
-			#if sys
 			try
 			{
 				if (!FileSystem.exists("crash/"))
 					FileSystem.createDirectory("crash/");
-				File.saveContent(path, '$errorMessage\n\nCrash Happened on SR Engine v${MainMenuState.psychEngineJSVersionNumber}!');
+				File.saveContent(path, '$errorMessage\n\nCrash Happened on JS Engine v${MainMenuState.psychEngineJSVersionNumber}!');
 			}
 			catch (e)
 				trace('Couldn\'t save error message. (${e.message})');
 
 			Sys.println(errorMessage);
 			Sys.println("Crash dump saved in " + Path.normalize(path));
-			#else
-			trace("Crash dump logging is disabled on this platform.");
-			#end
 		}
 		catch (e:Dynamic)
 			trace(e);
@@ -180,7 +169,7 @@ class CrashHandler
 				+ "\nThe engine has saved a crash log inside the crash folder, If you're making a GitHub issue you might want to send that!";
 
 			CoolUtil.showPopUp(errorMessage,
-				"Error! SR Engine v"
+				"Error! JS Engine v"
 				+ MainMenuState.psychEngineJSVersion
 				+ " ("
 				+ __superCoolErrorMessagesArray[FlxG.random.int(0, __superCoolErrorMessagesArray.length)]
@@ -208,7 +197,7 @@ class Crash extends MusicBeatState
 		bg.color = 0xFF232323;
 		add(bg);
 
-		var ohNo:FlxText = new FlxText(0, 0, 1280, 'SR Engine v${MainMenuState.psychEngineJSVersionNumber} has crashed!');
+		var ohNo:FlxText = new FlxText(0, 0, 1280, 'JS Engine v${MainMenuState.psychEngineJSVersionNumber} has crashed!');
 		ohNo.setFormat(Paths.font('vcr.ttf'), 48, FlxColor.WHITE, FlxTextAlign.CENTER);
 		ohNo.alpha = 0;
 		ohNo.screenCenter();
@@ -269,20 +258,13 @@ class Crash extends MusicBeatState
 		for (spr in crash)
 			FlxTween.tween(spr, {alpha: 1}, 0.5);
 
-		#if !html5
-		var errorSound = Paths.sound('error');
-		if (errorSound != null)
-		{
-			var error:FlxSound = FlxG.sound.load(errorSound);
-			if (error != null)
-				error.play();
-		}
-		#end
+		var error:FlxSound = FlxG.sound.load(Paths.sound('error'));
+		error.play();
 
 		super.create();
 	}
 
-	// Do note that if you use "resetGame" SR Engine will be in a crash loop because music is missing.
+	// Do note that if you use "resetGame" js engine will be in a crash loop because music is missing.
 	// Even with my coding skills and trying to make it work it just doesn't, i'm probably stupid.
 	// Also yes i tried FlxG.sound.playMusic and yet it doesn't do what it's suppose to do.
 	// -nael2xd

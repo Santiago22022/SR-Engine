@@ -30,11 +30,7 @@ class Main extends Sprite {
 
 	public static var fpsVar:FPSCounter;
 
-	#if sys
 	public static final superDangerMode:Bool = Sys.args().contains("-troll");
-	#else
-	public static final superDangerMode:Bool = false;
-	#end
 
 	// You can pretty much ignore everything from here on - your code should go in your states.
 
@@ -91,11 +87,7 @@ class Main extends Sprite {
 		addChild(fpsVar);
 
 		if (fpsVar != null) {
-			#if html5
-			fpsVar.visible = false; // Hide FPS on HTML5 by default for better performance
-			#else
 			fpsVar.visible = ClientPrefs.showFPS;
-			#end
 		}
 
 		#if !web

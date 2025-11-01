@@ -1,4 +1,4 @@
-﻿package;
+package;
 
 import backend.PsychCamera;
 import flixel.addons.ui.FlxUIState;
@@ -27,7 +27,7 @@ class MusicBeatState extends FlxUIState
 
 	public static var windowNameSuffix(default, set):String = "";
 	public static var windowNameSuffix2(default, set):String = ""; //changes to "Outdated!" if the version of the engine is outdated
-	public static var windowNamePrefix:String = "Friday Night Funkin': SR Engine";
+	public static var windowNamePrefix:String = "Friday Night Funkin': JS Engine";
 
 	// better then updating it all the time which can cause memory leaks
 	static function set_windowNameSuffix(value:String){
@@ -222,4 +222,3 @@ class MusicBeatState extends FlxUIState
 		return val == null ? 4 : val;
 	}
 }
-

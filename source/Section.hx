@@ -21,10 +21,6 @@ class Section
 	public var typeOfSection:Int = 0;
 	public var mustHitSection:Bool = true;
 
-	public var bpm:Float = 0;
-	public var changeBPM:Bool = false;
-	public var altAnim:Bool = false;
-
 	public function new(sectionBeats:Float = 4)
 	{
 		this.sectionBeats = sectionBeats;

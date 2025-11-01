@@ -74,7 +74,7 @@ class TitleState extends MusicBeatState
 		swagShader = new ColorSwap();
 		super.create();
 
-		#if (CHECK_FOR_UPDATES && sys)
+		#if (CHECK_FOR_UPDATES)
 		if(ClientPrefs.checkForUpdates && !closedState && !Main.askedToUpdate) {
 			trace('checking for update');
 			var http = new haxe.Http("https://raw.githubusercontent.com/JordanSantiagoYT/FNF-JS-Engine/main/THECHANGELOG.md");
@@ -443,13 +443,13 @@ class TitleState extends MusicBeatState
 					FlxG.sound.music.fadeIn(4, 0, 0.7);
 				case 2:
 					#if PSYCH_WATERMARKS
-					createCoolText(['SR Engine by'], 15);
+					createCoolText(['JS Engine by'], 15);
 					#else
 					createCoolText(['ninjamuffin99', 'phantomArcade', 'kawaisprite', 'evilsk8er']);
 					#end
 				case 4:
 					#if PSYCH_WATERMARKS
-					addMoreText('Santiiaago', 15);
+					addMoreText('Jordan Santiago', 15);
 					addMoreText('Moxie', 15);
 					#else
 					addMoreText('present');

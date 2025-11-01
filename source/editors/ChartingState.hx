@@ -1,4 +1,4 @@
-﻿package editors;
+package editors;
 
 import Character.CharacterFile;
 import Conductor.BPMChangeEvent;
@@ -89,7 +89,7 @@ class ChartingState extends MusicBeatState
 		['Change Character', "Value 1: Character to change (Dad, BF, GF)\nValue 2: New character's name"],
 		['Change Scroll Speed', "Value 1: Scroll Speed Multiplier (1 is default)\nValue 2: Time it takes to change fully in seconds."],
 		['Set Property', "Value 1: Variable name\nValue 2: New value"],
-		['Windows Notification', "Value 1: Notification title\n    - Defaults to \"SR Engine\" if empty.\n\nValue 2: Notification message / info\n    - Defaults to \"Are you doing that one bambi song?\" if empty."]
+		['Windows Notification', "Value 1: Notification title\n    - Defaults to \"JS Engine\" if empty.\n\nValue 2: Notification message / info\n    - Defaults to \"Are you doing that one bambi song?\" if empty."]
 	];
 
 	var _file:FileReference;
@@ -860,7 +860,7 @@ class ChartingState extends MusicBeatState
 	}
 
 	function songJsonPopup() { //you tried reloading the json, but it doesn't exist
-		CoolUtil.coolError("The engine failed to load the JSON! \nEither it doesn't exist, or the name doesn't match with the one you're putting?", "SR Engine Anti-Crash Tool");
+		CoolUtil.coolError("The engine failed to load the JSON! \nEither it doesn't exist, or the name doesn't match with the one you're putting?", "JS Engine Anti-Crash Tool");
 	}
 
     function promptBackup() {
@@ -873,8 +873,8 @@ class ChartingState extends MusicBeatState
 				  var wrapper:SwagSong = Song.parseJSON(f);
 				  if (wrapper.song == null) {
 					CoolUtil.coolError(
-					  "Failed to load JSON â€“ not a valid chart.json.",
-					  "SR Engine Anti-Crash Tool"
+					  "Failed to load JSON – not a valid chart.json.",
+					  "JS Engine Anti-Crash Tool"
 					);
 					return;
 				  }
@@ -885,7 +885,7 @@ class ChartingState extends MusicBeatState
 				  FlxG.resetState();
 
                 } catch(e) {
-                    CoolUtil.coolError('Failed to load JSON, is it a character.json or a stage.json instead of a chart.json?\nError: $e', "SR Engine Anti-Crash Tool");
+                    CoolUtil.coolError('Failed to load JSON, is it a character.json or a stage.json instead of a chart.json?\nError: $e', "JS Engine Anti-Crash Tool");
                 };
             }, null, ignoreWarnings));
         });
@@ -4190,13 +4190,8 @@ class ChartingState extends MusicBeatState
 		//shitty null fix, i fucking hate it when this happens
 		//make it look sexier if possible
 			var songName:String = Paths.formatToSongPath(_song.song);
-		#if sys
-		var jsonExists = sys.FileSystem.exists(Paths.json(songName + '/' + songName)) || sys.FileSystem.exists(Paths.modsJson(songName + '/' + songName));
-		var diffJsonExists = sys.FileSystem.exists(Paths.json(songName + '/' + songName + '-$diff')) || sys.FileSystem.exists(Paths.modsJson(songName + '/' + songName + '-$diff'));
-		#else
-		var jsonExists = OpenFlAssets.exists(Paths.json(songName + '/' + songName));
-		var diffJsonExists = OpenFlAssets.exists(Paths.json(songName + '/' + songName + '-$diff'));
-		#end
+			var jsonExists = sys.FileSystem.exists(Paths.json(songName + '/' + songName)) || sys.FileSystem.exists(Paths.modsJson(songName + '/' + songName));
+			var diffJsonExists = sys.FileSystem.exists(Paths.json(songName + '/' + songName + '-$diff')) || sys.FileSystem.exists(Paths.modsJson(songName + '/' + songName + '-$diff'));
 		if(jsonExists || diffJsonExists)
 		{
 		if (diff != CoolUtil.defaultDifficulty.toLowerCase()) {
@@ -4228,12 +4223,10 @@ class ChartingState extends MusicBeatState
 	private function saveLevel(?compressed:Bool = false, ?isAuto:Bool = false)
 	{
 		Paths.gc(true);
-		#if cpp
 		if (CoolUtil.getNoteAmount(_song) > 1000000)
 		{
 			cpp.vm.Gc.enable(false);
 		}
-		#end
 		if(_song.events != null && _song.events.length > 1) _song.events.sort(sortByTime);
 
 		final json = {
@@ -4257,7 +4250,6 @@ class ChartingState extends MusicBeatState
 
 				_file.save(data.trim(), gamingName + ".json");
 			} else {
-				#if sys
 				// create backups folder if it doesn't exist yet
 				if (!FileSystem.exists('backups/')) {
 					FileSystem.createDirectory("backups/");
@@ -4284,13 +4276,10 @@ class ChartingState extends MusicBeatState
 				dateNow = dateNow.replace(":", "'");
 
 				File.saveContent('backups/${gamingName}_$dateNow.json', data.trim());
-				#end
 			}
 		}
 
-		#if cpp
 		cpp.vm.Gc.enable(true);
-		#end
 		unsavedChanges = false;
 		if (autoSaveTimer != null) autoSaveTimer.reset(autoSaveLength);
 	}
@@ -4554,4 +4543,3 @@ class SelectionNote extends FlxSprite
 		}
 	}
 }
-

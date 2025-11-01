@@ -1,13 +1,3 @@
-#if !LUA_ALLOWED
-package psychlua;
-
-class HScript
-{
-	public static function initHaxeModule(parent:FunkinLua):Void {}
-	public function new(parent:FunkinLua) {}
-	public static function implement(funk:FunkinLua):Void {}
-}
-#else
 package psychlua;
 
 #if HSCRIPT_ALLOWED
@@ -18,6 +8,12 @@ import hscript.Expr;
 
 import haxe.Exception;
 
+// import objects.Character;
+
+/*
+* TODO: Decouple Lua from HScript and allow for more powerful HScript
+* Add an Script Manager to manage Lua/HScript?
+*/
 class HScript
 {
 	public static var parser:Parser = new Parser();
@@ -91,6 +87,9 @@ class HScript
 			LuaUtils.luaTrace(parentLua.lua, text, true, false, color);
 		});
 
+		// For adding your own callbacks
+
+		// not very tested but should work
 		interp.variables.set('createGlobalCallback', function(name:String, func:Dynamic)
 		{
 			#if HSCRIPT_ALLOWED
@@ -101,6 +100,7 @@ class HScript
 			FunkinLua.customFunctions.set(name, func);
 		});
 
+		// tested
 		interp.variables.set('createCallback', function(name:String, func:Dynamic, ?funk:FunkinLua = null)
 		{
 			if(funk == null) funk = parentLua;
@@ -146,8 +146,10 @@ class HScript
 	{
 		if(funcToRun != null)
 		{
+			//trace('Executing $funcToRun');
 			if(interp.variables.exists(funcToRun))
 			{
+				//trace('$funcToRun exists, executing...');
 				if(funcArgs == null) funcArgs = [];
 				try {
 					return Reflect.callMethod(null, interp.variables.get(funcToRun), funcArgs);
@@ -173,6 +175,7 @@ class HScript
 				{
 					for (key in Reflect.fields(varsToBring))
 					{
+						//trace('Key $key: ' + Reflect.field(varsToBring, key));
 						funk.hscript.interp.variables.set(key, Reflect.field(varsToBring, key));
 					}
 				}
@@ -224,4 +227,3 @@ class HScript
 		#end
 	}
 }
-#end

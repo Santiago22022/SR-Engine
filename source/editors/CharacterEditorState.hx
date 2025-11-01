@@ -1,4 +1,4 @@
-﻿package editors;
+package editors;
 
 import Character;
 import flixel.FlxState;
@@ -1167,7 +1167,7 @@ class CharacterEditorState extends MusicBeatState
 			char.frames = charFrames;
 		} else {
 			trace ("The png file the game looked for wasn't found!");
-			CoolUtil.coolError("The image/XML/Atlas files you tried to load couldn't be found!\nEither it doesn't exist, or the name doesn't match with the one you're putting?", "SR Engine Anti-Crash Tool");
+			CoolUtil.coolError("The image/XML/Atlas files you tried to load couldn't be found!\nEither it doesn't exist, or the name doesn't match with the one you're putting?", "JS Engine Anti-Crash Tool");
 		}
 
 		for (anim in anims) {
@@ -1326,7 +1326,7 @@ class CharacterEditorState extends MusicBeatState
 	function reloadCharacterDropDown() {
 		var charsLoaded:Map<String, Bool> = new Map();
 
-		#if (MODS_ALLOWED && sys)
+		#if MODS_ALLOWED
 		characterList = [];
 		var directories:Array<String> = [Paths.mods('characters/'), Paths.mods(Paths.currentModDirectory + '/characters/'), Paths.getPreloadPath('characters/')];
 		for(mod in Paths.getGlobalMods())
@@ -1336,7 +1336,7 @@ class CharacterEditorState extends MusicBeatState
 			if(FileSystem.exists(directory)) {
 				for (file in FileSystem.readDirectory(directory)) {
 					var path = haxe.io.Path.join([directory, file]);
-					if (!FileSystem.isDirectory(path) && file.endsWith('.json')) {
+					if (!sys.FileSystem.isDirectory(path) && file.endsWith('.json')) {
 						var charToCheck:String = file.substr(0, file.length - 5);
 						if(!charsLoaded.exists(charToCheck)) {
 							characterList.push(charToCheck);
@@ -1714,4 +1714,3 @@ enum CharacterChange {
 	CChangeOffset(name:String, change:FlxPoint);
 	CResetOffsets(oldOffsets:Map<String, FlxPoint>);
 }
-
