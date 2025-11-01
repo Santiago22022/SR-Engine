@@ -1326,7 +1326,7 @@ class CharacterEditorState extends MusicBeatState
 	function reloadCharacterDropDown() {
 		var charsLoaded:Map<String, Bool> = new Map();
 
-		#if MODS_ALLOWED
+		#if (MODS_ALLOWED && sys)
 		characterList = [];
 		var directories:Array<String> = [Paths.mods('characters/'), Paths.mods(Paths.currentModDirectory + '/characters/'), Paths.getPreloadPath('characters/')];
 		for(mod in Paths.getGlobalMods())
@@ -1336,7 +1336,7 @@ class CharacterEditorState extends MusicBeatState
 			if(FileSystem.exists(directory)) {
 				for (file in FileSystem.readDirectory(directory)) {
 					var path = haxe.io.Path.join([directory, file]);
-					if (!sys.FileSystem.isDirectory(path) && file.endsWith('.json')) {
+					if (!FileSystem.isDirectory(path) && file.endsWith('.json')) {
 						var charToCheck:String = file.substr(0, file.length - 5);
 						if(!charsLoaded.exists(charToCheck)) {
 							characterList.push(charToCheck);

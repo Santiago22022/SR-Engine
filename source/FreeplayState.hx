@@ -608,17 +608,31 @@ class FreeplayState extends MusicBeatState
 				}
 				var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
 				var songLowercase:String = Paths.formatToSongPath(songs[curSelected].songName);
-				#if MODS_ALLOWED
-				if(instPlaying != curSelected && !player.playingMusic)
-				{
-					if(sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)))
-						playSong();
-					else
-						songJsonPopup();
-				}
-				#else
-				if(instPlaying != curSelected && !player.playingMusic)
-				{
+					#if MODS_ALLOWED
+					if(instPlaying != curSelected && !player.playingMusic)
+					{
+						#if sys
+						if(sys.FileSystem.exists(Paths.inst(songLowercase, CoolUtil.difficulties[curDifficulty].toLowerCase())) || sys.FileSystem.exists(Paths.json(songLowercase + '/' + poop)) || sys.FileSystem.exists(Paths.modsJson(songLowercase + '/' + poop)))
+							playSong();
+						else
+							songJsonPopup();
+						#else
+						var instResource:Dynamic = Paths.inst(songs[curSelected].songName, CoolUtil.difficulties[curDifficulty]);
+						var instAvailable:Bool = false;
+						if (Std.isOfType(instResource, String))
+							instAvailable = OpenFlAssets.exists(cast instResource);
+						else
+							instAvailable = instResource != null;
+
+						if(instAvailable || OpenFlAssets.exists(Paths.json(songLowercase + '/' + poop)) || OpenFlAssets.exists(Paths.modsJson(songLowercase + '/' + poop)))
+							playSong();
+						else
+							songJsonPopup();
+						#end
+					}
+					#else
+					if(instPlaying != curSelected && !player.playingMusic)
+					{
 					var instResource:Dynamic = Paths.inst(songs[curSelected].songName, CoolUtil.difficulties[curDifficulty]);
 					var instAvailable:Bool = false;
 					if (Std.isOfType(instResource, String))

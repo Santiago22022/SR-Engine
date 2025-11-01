@@ -1188,6 +1188,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 	static public function getModDirectories():Array<String> {
 		var list:Array<String> = [];
 		var modsFolder:String = mods();
+		#if (MODS_ALLOWED && sys)
 		if(FileSystem.exists(modsFolder)) {
 			for (folder in FileSystem.readDirectory(modsFolder)) {
 				var path = haxe.io.Path.join([modsFolder, folder]);
@@ -1196,6 +1197,7 @@ public static function getPath(file:String, ?type:AssetType = TEXT, ?library:Nul
 				}
 			}
 		}
+		#end
 		return list;
 	}
 	#end
