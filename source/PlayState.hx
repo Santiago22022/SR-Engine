@@ -7,6 +7,7 @@ import DialogueBoxPsych;
 import Note.EventNote;
 import Note.PreloadedChartNote;
 import Note;
+import NotePool;
 import Section.SwagSection;
 import Shaders;
 import Song.SwagSong;
@@ -337,6 +338,8 @@ class PlayState extends MusicBeatState
 
 	// how big to stretch the pixel art assets
 	public static var daPixelZoom:Float = 6;
+
+	private var notePool:NotePool;
 
 	public static var sectionsLoaded:Int = 0;
 	public var notesLoadedRN:Int = 0;
@@ -1092,6 +1095,9 @@ class PlayState extends MusicBeatState
 
 		notes = new FlxTypedGroup<Note>();
 		add(notes);
+
+		notePool = new NotePool();
+		add(notePool);
 		notes.visible = sustainNotes.visible = ClientPrefs.showNotes; //that was easier than expected
 		noteGroups = [notes, sustainNotes];
 
@@ -2315,6 +2321,7 @@ class PlayState extends MusicBeatState
 	var comboInfo = ClientPrefs.showComboInfo;
 	var showNPS = ClientPrefs.showNPS;
 	var missString:String = '';
+	private var scoreTxtCache:String = "";
 	public dynamic function updateScore(miss:Bool = false)
 	{
 		scoreTxtUpdateFrame++;
@@ -2374,7 +2381,11 @@ class PlayState extends MusicBeatState
 				tempScore = 'Score: ' + formattedScore;
 		}
 
-		scoreTxt.text = '${tempScore}\n';
+		if(scoreTxtCache != tempScore)
+		{
+			scoreTxt.text = '${tempScore}\n';
+			scoreTxtCache = tempScore;
+		}
 
 		callOnLuas('onUpdateScore', [miss]);
 	}
@@ -3655,8 +3666,11 @@ class PlayState extends MusicBeatState
 
 		if (ClientPrefs.showRendered)
 		{
-			if (!ffmpegMode) renderedTxt.text = 'Rendered/Skipped: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(skippedCount)}/${formatNumber(maxRenderedNotes)}/${formatNumber(maxSkipped)}';
-			else renderedTxt.text = 'Rendered Notes: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(maxRenderedNotes)}/${formatNumber(notes.members.length + sustainNotes.members.length)}';
+			var newText:String = "";
+			if (!ffmpegMode) newText = 'Rendered/Skipped: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(skippedCount)}/${formatNumber(maxRenderedNotes)}/${formatNumber(maxSkipped)}';
+			else newText = 'Rendered Notes: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(maxRenderedNotes)}/${formatNumber(notes.members.length + sustainNotes.members.length)}';
+			if(renderedTxt.text != newText)
+				renderedTxt.text = newText;
 		}
 
 		setOnLuas('cameraX', camFollowPos.x);
@@ -3691,20 +3705,23 @@ class PlayState extends MusicBeatState
 		}
 
 		if(botplayTxt != null && botplayTxt.visible) {
+			var botplayText:String = "";
 			switch (ffmpegInfo)
 			{
-				case 'Frame Time': botplayTxt.text = CoolUtil.floatToStringPrecision(haxe.Timer.stamp() - takenTime, 3) + 's';
+				case 'Frame Time': botplayText = CoolUtil.floatToStringPrecision(haxe.Timer.stamp() - takenTime, 3) + 's';
 				case 'Time Remaining':
 					var timeETA:String = CoolUtil.formatTime((FlxG.sound.music.length - Conductor.songPosition) * (60 / Main.fpsVar.currentFPS), 2);
-					if (ClientPrefs.showcaseMode) botplayTxt.text += '\nTime Remaining: ' + timeETA;
-					else botplayTxt.text = ogBotTxt + '\nTime Remaining: ' + timeETA;
+					if (ClientPrefs.showcaseMode) botplayText = botplayTxt.text + '\nTime Remaining: ' + timeETA;
+					else botplayText = ogBotTxt + '\nTime Remaining: ' + timeETA;
 				case 'Rendering Time':
 					totalRenderTime = haxe.Timer.stamp() - startingTime;
-					if (ClientPrefs.showcaseMode) botplayTxt.text += '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
-					else botplayTxt.text = ogBotTxt + '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
-
+					if (ClientPrefs.showcaseMode) botplayText = botplayTxt.text + '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
+					else botplayText = ogBotTxt + '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
 				default:
+					botplayText = botplayTxt.text;
 			}
+			if(botplayTxt.text != botplayText)
+				botplayTxt.text = botplayText;
 		}
 		takenTime = haxe.Timer.stamp();
 	}
@@ -5379,7 +5396,7 @@ class PlayState extends MusicBeatState
 			if (ClientPrefs.showNotes || !ClientPrefs.showNotes && !cpuControlled)
 			{
 				while (limitNC < noteLimit && targetNote.strumTime - Conductor.songPosition < (NOTE_SPAWN_TIME / targetNote.multSpeed)) {
-					spawnedNote = new Note();
+					spawnedNote = notePool.get();
 					(targetNote.isSustainNote ? sustainNotes : notes).add(spawnedNote);
 					spawnedNote.setupNoteData(targetNote);
 
@@ -5800,10 +5817,8 @@ class PlayState extends MusicBeatState
 		{
 			final note:Note = iterator.next();
 			note.active = note.visible = false;
-			if (!ClientPrefs.lowQuality || !cpuControlled)
-				note.kill();
 			(note.isSustainNote ? sustainNotes : notes).remove(note, true);
-			note.destroy();
+			notePool.put(note);
 		}
 		killNotes = [];
 	}
