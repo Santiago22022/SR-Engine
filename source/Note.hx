@@ -105,6 +105,9 @@ class Note extends FlxSprite
 	public static final colArray:Array<String> = ['purple', 'blue', 'green', 'red'];
 	public static var defaultNoteSkin(default, never):String = 'noteskins/NOTE_assets';
 
+	private static inline final POOL_LIMIT:Int = 4096;
+	private static var notePool:Array<Note> = [];
+
 	public var noteSplashData:NoteSplashData = {
 		disabled: false,
 		texture: null,
@@ -153,6 +156,7 @@ class Note extends FlxSprite
 
 	public var pixelNote:Bool = false;
 	public var useRGBShader(default, set):Bool = true;
+	var inPool:Bool = false;
 
 	private function set_useRGBShader(value:Bool):Bool {
 		if (useRGBShader != value)
@@ -255,6 +259,79 @@ class Note extends FlxSprite
 				if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) useRGBShader = false;
 			}
 			else useRGBShader = false;
+		}
+	}
+
+	public static inline function obtain():Note
+	{
+		return (notePool.length > 0 ? notePool.pop().reviveFromPool() : new Note());
+	}
+
+	public static function release(note:Note):Void
+	{
+		if (note == null || note.inPool)
+			return;
+		note.prepareForPool();
+		if (notePool.length < POOL_LIMIT)
+		{
+			note.inPool = true;
+			notePool.push(note);
+		}
+		else
+		{
+			note.destroy();
+		}
+	}
+
+	inline function reviveFromPool():Note
+	{
+		inPool = false;
+		revive();
+		exists = alive = active = true;
+		visible = true;
+		alpha = 1;
+		scale.set(1, 1);
+		velocity.set();
+		acceleration.set();
+		scrollFactor.set(1, 1);
+		wasGoodHit = false;
+		hitByOpponent = false;
+		ignoreNote = false;
+		blockHit = false;
+		tooLate = false;
+		noteHoldSplash = null;
+		return this;
+	}
+
+	function prepareForPool():Void
+	{
+		if (noteHoldSplash != null)
+		{
+			noteHoldSplash.kill();
+			noteHoldSplash = null;
+		}
+		clearClipRect();
+		kill();
+		active = false;
+		visible = false;
+		exists = false;
+		canBeHit = false;
+		wasGoodHit = false;
+		tooLate = false;
+		hitByOpponent = false;
+		ignoreNote = false;
+		blockHit = false;
+		noteSplashDisabled = false;
+		if (animation != null)
+			animation.stop();
+	}
+
+	inline function clearClipRect():Void
+	{
+		if (clipRect != null)
+		{
+			clipRect.put();
+			clipRect = null;
 		}
 	}
 
@@ -508,7 +585,7 @@ class Note extends FlxSprite
 		if(isSustainNote && (mustPress || !ignoreNote) &&
 			(!mustPress || (wasGoodHit || !canBeHit)))
 		{
-			final swagRect:FlxRect = clipRect != null ? clipRect : new FlxRect(0, 0, frameWidth, frameHeight);
+			final swagRect:FlxRect = clipRect != null ? clipRect : FlxRect.get(0, 0, frameWidth, frameHeight);
 
 			if (myStrum.downScroll)
 			{
@@ -532,6 +609,10 @@ class Note extends FlxSprite
 	@:noCompletion
 	override function set_clipRect(rect:FlxRect):FlxRect
 	{
+		if (clipRect != null && clipRect != rect)
+		{
+			clipRect.put();
+		}
 		clipRect = rect;
 
 		if (frames != null)
@@ -708,7 +789,7 @@ class Note extends FlxSprite
 		}
 		angle = 0;
 
-		clipRect = null;
+		clearClipRect();
 		if (!mustPress)
 		{
 			visible = ClientPrefs.opponentStrums;

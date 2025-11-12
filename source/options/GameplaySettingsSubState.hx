@@ -3,6 +3,7 @@ package options;
 import Controls;
 import flixel.graphics.FlxGraphic;
 import flixel.input.keyboard.FlxKey;
+import utils.InputModeHelper;
 
 class GameplaySettingsSubState extends BaseOptionsMenu
 {
@@ -88,6 +89,15 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 			'bool',
 			false);
 		addOption(option);
+
+		var inputList:Array<String> = InputModeHelper.getAvailableModes();
+		var inputOption:Option = new Option('Input Style',
+			'Select how strict inputs should be handled.\nSR Engine mixes Codename, Anti-Mash, Anti-Spam and OS behaviors.',
+			'inputMode',
+			'string',
+			InputModeHelper.defaultMode(),
+			inputList);
+		addOption(inputOption);
 
 		var option:Option = new Option('Enable Taunt Key',
 			"If checked, pressing the Taunt key will make BF go HEY!!",

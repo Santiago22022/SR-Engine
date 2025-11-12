@@ -67,7 +67,7 @@ class SustainSplash extends FlxSprite
 
 		shader = (ClientPrefs.enableColorShader ? rgbShader.shader : null);
 
-		clipRect = new flixel.math.FlxRect(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
+		clipRect = FlxRect.get(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
 
 		if (daNote != null && daNote.rgbShader != null)
 		{

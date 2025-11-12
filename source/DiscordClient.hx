@@ -101,7 +101,7 @@ class DiscordClient
 		isInitialized = true;
 	}
 
-	public static function changePresence(details:String = 'In the Menus', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Float, largeImageKey:String = 'icon')
+	public static function changePresence(details:String = 'Jaime te persige...', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Float, largeImageKey:String = 'icon')
 	{
 		var startTimestamp:Float = 0;
 		if (hasStartTimestamp) startTimestamp = Date.now().getTime();
@@ -118,7 +118,7 @@ class DiscordClient
 
 		final button:DiscordButton = new DiscordButton();
 		button.label = "Engine Source Code";
-		button.url = "https://github.com/JordanSantiagoYT/FNF-JS-Engine";
+		button.url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 		presence.buttons[0] = button;
 		updatePresence();
 	}

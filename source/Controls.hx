@@ -129,6 +129,7 @@ class Controls extends FlxActionSet
 	final noteReleaseCache:Array<Bool> = [false, false, false, false];
 	final noteHoldDurations:Array<Float> = [0.0, 0.0, 0.0, 0.0];
 	final noteLastPress:Array<Float> = [-1.0, -1.0, -1.0, -1.0];
+	var lastUpdateFrame:Int = -1;
 
 	var byName:Map<String, FlxActionDigital> = [];
 
@@ -337,6 +338,10 @@ class Controls extends FlxActionSet
 
 	override function update()
 	{
+		final frame:Int = (FlxG.game != null) ? FlxG.game.ticks : -1;
+		if (frame == lastUpdateFrame)
+			return;
+		lastUpdateFrame = frame;
 		super.update();
 		refreshNoteCaches(FlxG.elapsed);
 	}

@@ -5,6 +5,7 @@ import Note.PreloadedChartNote;
 import Section.SwagSection;
 import Song.SwagSong;
 import flixel.input.keyboard.FlxKey;
+import utils.InputModeHelper;
 import flixel.util.FlxSort;
 import objects.SustainSplash;
 import openfl.events.KeyboardEvent;
@@ -514,7 +515,7 @@ class EditorPlayState extends MusicBeatState
 						else goodNoteHit(doubleNote); //otherwise, hit doubleNote instead of killing it
 					}
 					goodNoteHit(funnyNote);
-					if (plrInputNotes.length > 2 && ClientPrefs.ezSpam) {
+					if (plrInputNotes.length > 2 && InputModeHelper.allowsStackHitAssist()) {
 						for (i in 1...plrInputNotes.length) goodNoteHit(plrInputNotes[i]);
 					}
 				}

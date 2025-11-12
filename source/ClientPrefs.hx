@@ -17,6 +17,7 @@ class ClientPrefs { //default settings if it can't find a save file containing y
 	public static var noReset:Bool = false;
 	public static var antiCheatEnable:Bool = false;
 	public static var ezSpam:Bool = false;
+	public static var inputMode:String = 'Psych Engine';
 	public static var spaceVPose:Bool = true;
 	public static var ghostTapAnim:Bool = true;
 	public static var hitsoundVolume:Float = 0;

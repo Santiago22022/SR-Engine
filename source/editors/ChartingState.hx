@@ -170,6 +170,12 @@ class ChartingState extends MusicBeatState
 	var hitsound:FlxSound = null;
 
 	var zoomTxt:FlxText;
+	var statusTxt:FlxText;
+	var helpOverlay:FlxText;
+	var helpOverlayVisible:Bool = false;
+	var statusUpdateTimer:Float = 0;
+	inline static final STATUS_UPDATE_INTERVAL:Float = 0.08;
+	inline static final HELP_PANEL_TEXT:String = 'H - Toggle Help Panel\nSpace - Play/Pause\nA / D - Prev/Next Section\nZ / X - Zoom\nQ / E or Ctrl+Wheel - Resize Sustain\nCtrl+Click - Multi-Select Notes\nShift+Scroll - Fine Scrub\nMouse Wheel - Scroll Timeline';
 
 	var zoomList:Array<Float> = [
 		0.0625,
@@ -561,10 +567,22 @@ class ChartingState extends MusicBeatState
 		zoomTxt.scrollFactor.set();
 		add(zoomTxt);
 
+		statusTxt = new FlxText(10, zoomTxt.y + 18, 0, "", 14);
+		statusTxt.scrollFactor.set();
+		add(statusTxt);
+
+		helpOverlay = new FlxText(FlxG.width - 320, 10, 300, HELP_PANEL_TEXT, 14);
+		helpOverlay.setFormat(Paths.font("vcr.ttf"), 14, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE_FAST, FlxColor.BLACK);
+		helpOverlay.scrollFactor.set();
+		helpOverlay.visible = false;
+		helpOverlay.alpha = 0.9;
+		add(helpOverlay);
+
 		if (idleMusicAllow) idleMusic.playMusic();
 		else idleMusic.pauseMusic();
 
 		updateGrid();
+		updateStatusHUD(0, true);
 
 		super.create();
 	}
@@ -2529,6 +2547,10 @@ class ChartingState extends MusicBeatState
 		}
 		FlxG.watch.addQuick('daBeat', curBeat);
 		FlxG.watch.addQuick('daStep', curStep);
+		updateStatusHUD(elapsed);
+
+		if (FlxG.keys.justPressed.H)
+			toggleHelpOverlay();
 
 		selectionEvent.visible = false;
 		if (FlxG.mouse.x > gridBG.x
@@ -3174,6 +3196,49 @@ class ChartingState extends MusicBeatState
 		if(daZoom < 1) zoomThing = Math.round(1 / daZoom) + ' / 1';
 		zoomTxt.text = 'Zoom: ' + zoomThing;
 		reloadGridLayer();
+	}
+
+	function toggleHelpOverlay():Void
+	{
+		if (helpOverlay == null)
+			return;
+		helpOverlayVisible = !helpOverlayVisible;
+		helpOverlay.visible = helpOverlayVisible;
+	}
+
+	function updateStatusHUD(elapsed:Float, ?force:Bool = false):Void
+	{
+		if (statusTxt == null)
+			return;
+		if (!force)
+		{
+			statusUpdateTimer -= elapsed;
+			if (statusUpdateTimer > 0)
+				return;
+		}
+		statusUpdateTimer = STATUS_UPDATE_INTERVAL;
+		var playState:String = FlxG.sound.music.playing ? 'Playing' : 'Paused';
+		var beat:Float = FlxMath.roundDecimal(curDecBeat, 2);
+		var status:String = 'Time ' + formatEditorTimestamp(FlxG.sound.music.time) +
+			' | Beat ' + beat +
+			' | Step ' + curStep +
+			' | Section ' + curSec +
+			' | Snap 1/' + quantization +
+			' | ' + playState;
+		statusTxt.text = status;
+	}
+
+	inline function formatEditorTimestamp(time:Float):String
+	{
+		if (Math.isNaN(time) || time < 0)
+			time = 0;
+		var totalMS:Int = Std.int(time);
+		var minutes:Int = Std.int(totalMS / 60000);
+		var seconds:Int = Std.int((totalMS % 60000) / 1000);
+		var millis:Int = Std.int(totalMS % 1000);
+		var secStr:String = seconds < 10 ? '0' + seconds : '' + seconds;
+		var milliStr:String = StringTools.lpad(Std.string(millis), '0', 3);
+		return minutes + ':' + secStr + '.' + milliStr;
 	}
 
 	var lastSecBeats:Float = 0;
