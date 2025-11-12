@@ -24,7 +24,12 @@ import NoteInputState;
 import openfl.events.KeyboardEvent;
 import haxe.ds.IntMap;
 import haxe.ds.StringMap;
+#if SHADERS_ALLOWED
+import haxe.ds.ObjectMap;
+#end
 import utils.InputModeHelper;
+import utils.VRAMCache;
+import utils.AudioCache;
 #if SHADERS_ALLOWED
 import openfl.filters.BitmapFilter;
 import openfl.filters.ShaderFilter;
@@ -55,6 +60,10 @@ class PlayState extends MusicBeatState
 	#if SHADERS_ALLOWED
 	private var screenShaderFilter:ShaderFilter;
 	private var shaderFilterActive:Bool = false;
+	private var shaderFilterCache:ObjectMap<ShaderEffect, ShaderFilter> = new ObjectMap();
+	private var camGameFilterList:Array<BitmapFilter> = [];
+	private var camHUDFilterList:Array<BitmapFilter> = [];
+	private var camOtherFilterList:Array<BitmapFilter> = [];
 	#end
 
 	var lastUpdateTime:Float = 0.0;
@@ -124,6 +133,11 @@ class PlayState extends MusicBeatState
 
 	var strumsHit:Array<Bool> = [false, false, false, false, false, false, false, false];
 	public var splashesPerFrame:Array<Int> = [0, 0, 0, 0];
+	private var cachedHoldInputs:Array<Bool>;
+	private var cachedPressInputs:Array<Bool>;
+	private var cachedReleaseInputs:Array<Bool>;
+	private var inputCacheToken:Int = 0;
+	private var lastInputCacheToken:Int = -1;
 	var laneMashLocks:Array<Bool> = [];
 	var laneHitCooldowns:Array<Float> = [];
 	var antiMashInput:Bool = false;
@@ -866,6 +880,9 @@ class PlayState extends MusicBeatState
 			boyfriendGroup.add(boyfriend);
 			startCharacterLua(boyfriend.curCharacter);
 			bfNoteskin = boyfriend.noteskin;
+
+			if (ClientPrefs.cacheOnGPU)
+				VRAMCache.preloadForSong(SONG, dad, boyfriend, gf, curStage, stageUI, isPixelStage, dadNoteskin, bfNoteskin);
 		}
 
 		shouldDrainHealth = (opponentDrain || (opponentChart ? boyfriend.healthDrain : dad.healthDrain));
@@ -1830,25 +1847,16 @@ class PlayState extends MusicBeatState
 		switch(cam.toLowerCase()) {
 			case 'camhud' | 'hud':
 				camHUDShaders.push(effect);
-				var newCamEffects:Array<BitmapFilter>=[]; // IT SHUTS HAXE UP IDK WHY BUT WHATEVER IDK WHY I CANT JUST ARRAY<SHADERFILTER>
-				for(i in camHUDShaders){
-					newCamEffects.push(new ShaderFilter(i.shader));
-				}
-				camHUD.filters = newCamEffects;
+				rebuildCameraFilters(camHUDShaders, camHUDFilterList);
+				camHUD.filters = camHUDFilterList.length > 0 ? camHUDFilterList : null;
 			case 'camother' | 'other':
 				camOtherShaders.push(effect);
-				var newCamEffects:Array<BitmapFilter>=[]; // IT SHUTS HAXE UP IDK WHY BUT WHATEVER IDK WHY I CANT JUST ARRAY<SHADERFILTER>
-				for(i in camOtherShaders){
-					newCamEffects.push(new ShaderFilter(i.shader));
-				}
-				camOther.filters = newCamEffects;
+				rebuildCameraFilters(camOtherShaders, camOtherFilterList);
+				camOther.filters = camOtherFilterList.length > 0 ? camOtherFilterList : null;
 			case 'camgame' | 'game':
 				camGameShaders.push(effect);
-				var newCamEffects:Array<BitmapFilter>=[]; // IT SHUTS HAXE UP IDK WHY BUT WHATEVER IDK WHY I CANT JUST ARRAY<SHADERFILTER>
-				for(i in camGameShaders){
-					newCamEffects.push(new ShaderFilter(i.shader));
-				}
-				camGame.filters = newCamEffects;
+				rebuildCameraFilters(camGameShaders, camGameFilterList);
+				camGame.filters = camGameFilterList.length > 0 ? camGameFilterList : null;
 			default:
 				if(modchartSprites.exists(cam)) {
 					Reflect.setProperty(modchartSprites.get(cam),"shader",effect.shader);
@@ -1869,18 +1877,12 @@ class PlayState extends MusicBeatState
 	switch(cam.toLowerCase()) {
 		case 'camhud' | 'hud':
 			camHUDShaders.remove(effect);
-			var newCamEffects:Array<BitmapFilter>=[];
-			for(i in camHUDShaders){
-				newCamEffects.push(new ShaderFilter(i.shader));
-			}
-			camHUD.filters = newCamEffects;
+			rebuildCameraFilters(camHUDShaders, camHUDFilterList);
+			camHUD.filters = camHUDFilterList.length > 0 ? camHUDFilterList : null;
 		case 'camother' | 'other':
 			camOtherShaders.remove(effect);
-			var newCamEffects:Array<BitmapFilter>=[];
-			for(i in camOtherShaders){
-				newCamEffects.push(new ShaderFilter(i.shader));
-			}
-			camOther.filters = newCamEffects;
+			rebuildCameraFilters(camOtherShaders, camOtherFilterList);
+			camOther.filters = camOtherFilterList.length > 0 ? camOtherFilterList : null;
 		default:
 			if(modchartSprites.exists(cam)) {
 				Reflect.setProperty(modchartSprites.get(cam),"shader",null);
@@ -1900,20 +1902,20 @@ class PlayState extends MusicBeatState
 	switch(cam.toLowerCase()) {
 		case 'camhud' | 'hud':
 			camHUDShaders = [];
-			var newCamEffects:Array<BitmapFilter>=[];
-			camHUD.filters = newCamEffects;
+			camHUDFilterList.resize(0);
+			camHUD.filters = null;
 		case 'camother' | 'other':
 			camOtherShaders = [];
-			var newCamEffects:Array<BitmapFilter>=[];
-			camOther.filters = newCamEffects;
+			camOtherFilterList.resize(0);
+			camOther.filters = null;
 		case 'camgame' | 'game':
 			camGameShaders = [];
-			var newCamEffects:Array<BitmapFilter>=[];
-			camGame.filters = newCamEffects;
+			camGameFilterList.resize(0);
+			camGame.filters = null;
 		default:
 			camGameShaders = [];
-			var newCamEffects:Array<BitmapFilter>=[];
-			camGame.filters = newCamEffects;
+			camGameFilterList.resize(0);
+			camGame.filters = null;
 	}
 	#end
   }
@@ -2186,6 +2188,32 @@ class PlayState extends MusicBeatState
 	#else
 	inline function applyScreenShaderFilter():Void {}
 	inline function clearScreenShaderFilter():Void {}
+	#end
+
+	#if SHADERS_ALLOWED
+	inline function getFilterForEffect(effect:ShaderEffect):ShaderFilter
+	{
+		if (effect == null)
+			return null;
+		var cached = shaderFilterCache.get(effect);
+		if (cached == null)
+		{
+			cached = new ShaderFilter(effect.shader);
+			shaderFilterCache.set(effect, cached);
+		}
+		return cached;
+	}
+
+	inline function rebuildCameraFilters(shaders:Array<ShaderEffect>, filters:Array<BitmapFilter>):Void
+	{
+		filters.resize(0);
+		for (effect in shaders)
+		{
+			final filter = getFilterForEffect(effect);
+			if (filter != null)
+				filters.push(filter);
+		}
+	}
 	#end
 
 	inline function recordPlayerNps(value:Float):Void
@@ -2775,6 +2803,7 @@ class PlayState extends MusicBeatState
 		curSong = SONG.song;
 
 		var diff:String = (SONG.specialAudioName.length > 1 ? SONG.specialAudioName : CoolUtil.difficultyString()).toLowerCase();
+		AudioCache.preloadSongAudio(SONG, diff, boyfriend, dad);
 
 		if (SONG.windowName != null && SONG.windowName != '')
 			MusicBeatState.windowNamePrefix = SONG.windowName;
@@ -5515,6 +5544,7 @@ class PlayState extends MusicBeatState
 	// Hold notes
 	private function keyShit():Void
 	{
+		inputCacheToken++;
 		// HOLDING
 		var holdArray:Array<Bool> = parseKeys();
 		var pressArray:Array<Bool> = parseKeys('_P');
@@ -5633,12 +5663,23 @@ class PlayState extends MusicBeatState
 
 	public function parseKeys(?suffix:String = ''):Array<Bool>
 	{
+		refreshInputCache();
 		return switch (suffix)
 		{
-			case '_P': controls.getNoteStates(NoteInputState.Press);
-			case '_R': controls.getNoteStates(NoteInputState.Release);
-			default: controls.getNoteStates(NoteInputState.Hold);
+			case '_P': cachedPressInputs;
+			case '_R': cachedReleaseInputs;
+			default: cachedHoldInputs;
 		}
+	}
+
+	inline function refreshInputCache():Void
+	{
+		if (inputCacheToken == lastInputCacheToken)
+			return;
+		cachedHoldInputs = controls.getNoteStates(NoteInputState.Hold);
+		cachedPressInputs = controls.getNoteStates(NoteInputState.Press);
+		cachedReleaseInputs = controls.getNoteStates(NoteInputState.Release);
+		lastInputCacheToken = inputCacheToken;
 	}
 
 	function noteMiss(daNote:Note = null, daNoteAlt:PreloadedChartNote = null):Void { //You didn't hit the key and let it go offscreen, also used by Hurt Notes
@@ -5803,8 +5844,8 @@ class PlayState extends MusicBeatState
 			}
 			if (ClientPrefs.showNotes || !ClientPrefs.showNotes && !cpuControlled)
 			{
-				while (limitNC < noteLimit && targetNote.strumTime - Conductor.songPosition < (NOTE_SPAWN_TIME / targetNote.multSpeed)) {
-					spawnedNote = Note.obtain();
+		while (limitNC < noteLimit && targetNote.strumTime - Conductor.songPosition < (NOTE_SPAWN_TIME / targetNote.multSpeed)) {
+					spawnedNote = new Note();
 					(targetNote.isSustainNote ? sustainNotes : notes).add(spawnedNote);
 					spawnedNote.setupNoteData(targetNote);
 
@@ -6264,7 +6305,6 @@ class PlayState extends MusicBeatState
 			if (!ClientPrefs.lowQuality || !cpuControlled)
 				note.kill();
 			(note.isSustainNote ? sustainNotes : notes).remove(note, true);
-			Note.release(note);
 		}
 		killNotes = [];
 	}
