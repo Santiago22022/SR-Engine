@@ -18,7 +18,7 @@ class GameOverSubstate extends MusicBeatSubstate
 	public static var instance:GameOverSubstate;
 	public function new(?playStateBoyfriend:Character = null)
 	{
-		if(playStateBoyfriend != null && playStateBoyfriend.curCharacter == characterName) //Avoids spawning a second boyfriend cuz animate atlas is laggy
+		if(playStateBoyfriend != null && playStateBoyfriend.curCharacter == characterName && playStateBoyfriend.isAnimateAtlas)
 		{
 			this.boyfriend = playStateBoyfriend;
 		}
@@ -113,8 +113,15 @@ class GameOverSubstate extends MusicBeatSubstate
 				neneKnife.antialiasing = ClientPrefs.globalAntialiasing;
 				neneKnife.animation.finishCallback = function(_)
 				{
-					remove(neneKnife);
-					neneKnife.destroy();
+					neneKnife.animation.finishCallback = null;
+					neneKnife.visible = false;
+					neneKnife.active = false;
+					neneKnife.kill();
+					new FlxTimer().start(0.001, function(__)
+					{
+						remove(neneKnife, true);
+						neneKnife.destroy();
+					});
 				}
 				insert(0, neneKnife);
 				neneKnife.animation.play('anim', true);

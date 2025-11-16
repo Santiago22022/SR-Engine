@@ -329,6 +329,7 @@ class ModsMenuState extends MusicBeatState
 				var totalFrames = Math.floor(loadedIcon.width / 150) * Math.floor(loadedIcon.height / 150);
 				newMod.icon.animation.add("icon", [for (i in 0...totalFrames) i],10);
 				newMod.icon.animation.play("icon");
+				Paths.promoteGraphic(newMod.icon.graphic);
 			}
 			else
 			{

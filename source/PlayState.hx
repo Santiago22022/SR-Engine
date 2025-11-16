@@ -138,6 +138,7 @@ class PlayState extends MusicBeatState
 	private var cachedReleaseInputs:Array<Bool>;
 	private var inputCacheToken:Int = 0;
 	private var lastInputCacheToken:Int = -1;
+	private var laneHitBuffer:Array<Note> = [];
 	var laneMashLocks:Array<Bool> = [];
 	var laneHitCooldowns:Array<Float> = [];
 	var antiMashInput:Bool = false;
@@ -319,6 +320,15 @@ class PlayState extends MusicBeatState
 	private var processedBotplayEvent:String = null;
 	public var renderedTxt:FlxText;
 
+	var lastShowcaseEnemyHits:Float = Math.NaN;
+	var lastShowcaseTotalNotes:Float = Math.NaN;
+	var lastShowcaseNps:Float = Math.NaN;
+	var lastShowcaseMaxNps:Float = Math.NaN;
+	var lastShowcaseOppNps:Float = Math.NaN;
+	var lastShowcaseMaxOppNps:Float = Math.NaN;
+	var lastShowcasePolyOppo:Float = Math.NaN;
+	var lastShowcasePolyBF:Float = Math.NaN;
+
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
 	public var camHUD:FlxCamera;
@@ -330,6 +340,7 @@ class PlayState extends MusicBeatState
 	
 	// Object pool for hitsound images to reduce allocation
 	var hitsoundImagePool:FlxTypedGroup<FlxSprite>;
+	var notePool:Array<Note> = [];
 
 	//ok moxie this doesn't cause memory leaks
 	public var scoreTxtUpdateFrame:Int = 0;
@@ -521,6 +532,7 @@ class PlayState extends MusicBeatState
 
 		inline cpp.vm.Gc.enable(ClientPrefs.enableGC || ffmpegMode && !ClientPrefs.noRenderGC); //lagspike prevention
 		inline Paths.clearStoredMemory();
+		Paths.clearUnusedMemory();
 
 		#if sys
 		openfl.system.System.gc();
@@ -1959,7 +1971,8 @@ class PlayState extends MusicBeatState
 
 		if (foundFile)
 		{
-			videoCutscene = new VideoSprite(fileName, forMidSong, canSkip, loop);
+			final skipEnabled:Bool = canSkip || shouldForceVideoSkip();
+			videoCutscene = new VideoSprite(fileName, forMidSong, skipEnabled, loop);
 
 			// Finish callback
 			if (!forMidSong)
@@ -1994,6 +2007,30 @@ class PlayState extends MusicBeatState
 		startAndEnd();
 		#end
 		return null;
+	}
+
+	function getActiveWeekName():String
+	{
+		if (storyWeek >= 0 && storyWeek < WeekData.weeksList.length)
+			return WeekData.weeksList[storyWeek];
+		return null;
+	}
+
+	function shouldForceVideoSkip():Bool
+	{
+		if (!isStoryMode)
+			return false;
+
+		final weekName = getActiveWeekName();
+		if (weekName != null)
+		{
+			final normalized = weekName.toLowerCase();
+			if (normalized == 'week7' || normalized == 'weekend1')
+				return true;
+		}
+
+		final stage = curStage != null ? curStage.toLowerCase() : '';
+		return stage == 'tank' || stage == 'phillystreets' || stage == 'phillystreetsbf' || stage == 'phillyblazin';
 	}
 
 	public function startAndEnd()
@@ -2348,6 +2385,29 @@ class PlayState extends MusicBeatState
 	{
 		setLaneMashLock(lane, true);
 		startLaneCooldown(lane);
+	}
+
+	inline function shouldRefreshShowcaseStats(enemyHitsValue:Float, totalNotesValue:Float, npsValue:Float, maxNpsValue:Float, oppNpsValue:Float, maxOppNpsValue:Float, polyOppoValue:Float, polyBfValue:Float):Bool
+	{
+		if (enemyHitsValue == lastShowcaseEnemyHits
+			&& totalNotesValue == lastShowcaseTotalNotes
+			&& npsValue == lastShowcaseNps
+			&& maxNpsValue == lastShowcaseMaxNps
+			&& oppNpsValue == lastShowcaseOppNps
+			&& maxOppNpsValue == lastShowcaseMaxOppNps
+			&& polyOppoValue == lastShowcasePolyOppo
+			&& polyBfValue == lastShowcasePolyBF)
+			return false;
+
+		lastShowcaseEnemyHits = enemyHitsValue;
+		lastShowcaseTotalNotes = totalNotesValue;
+		lastShowcaseNps = npsValue;
+		lastShowcaseMaxNps = maxNpsValue;
+		lastShowcaseOppNps = oppNpsValue;
+		lastShowcaseMaxOppNps = maxOppNpsValue;
+		lastShowcasePolyOppo = polyOppoValue;
+		lastShowcasePolyBF = polyBfValue;
+		return true;
 	}
 
 	inline function shouldAutoHitStackedNotes():Bool
@@ -3380,12 +3440,16 @@ class PlayState extends MusicBeatState
 		final cachedCharsAndBG = ClientPrefs.charsAndBG;
 		final cachedFramerate = ClientPrefs.framerate;
 		final cachedShowNPS = ClientPrefs.showNPS;
-		final cachedShowNotes = ClientPrefs.showNotes;
-		final cachedNoteColorStyle = ClientPrefs.noteColorStyle;
-		final cachedEnableColorShader = ClientPrefs.enableColorShader;
 		final cachedBotTxtFade = ClientPrefs.botTxtFade;
 		final cachedRandomBotplayText = ClientPrefs.randomBotplayText;
 		final cachedBotTxtStyle = ClientPrefs.botTxtStyle;
+		final cachedScoreStyle = ClientPrefs.scoreStyle;
+		final cachedShowcaseMode = ClientPrefs.showcaseMode;
+		final cachedAntiCheatEnabled = ClientPrefs.antiCheatEnable;
+		final cachedDownScroll = ClientPrefs.downScroll;
+		final cachedShowRendered = ClientPrefs.showRendered;
+		final cachedOldFfmpegMode = ClientPrefs.oldFFmpegMode;
+		final cachedRenderGCRate = ClientPrefs.renderGCRate;
 		
 		if (cachedFfmpegMode) elapsed = 1 / cachedTargetFPS;
 		updateLaneCooldowns(elapsed);
@@ -3421,7 +3485,7 @@ class PlayState extends MusicBeatState
 				health += elapsed / 2;
 				hitResetTimer -= elapsed * playbackRate;
 				if (hitResetTimer <= 0) notesBeingHit = false;
-				if (missResetTimer > 0) missResetTimer -= 0.01 / (ClientPrefs.framerate / 60) * playbackRate;
+				if (missResetTimer > 0) missResetTimer -= 0.01 / (cachedFramerate / 60) * playbackRate;
 			}
 			if (notesBeingMissed && missResetTimer >= 0)
 			{
@@ -3454,23 +3518,38 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (botEnergy > 0.2 && botEnergy < 1.8) energyBar.color = energyTxt.color = 0xFF0094FF;
-		if (botEnergy < 0.2) energyBar.color = energyTxt.color = 0xFFC60000;
-		if (botEnergy > 1.8) energyBar.color = energyTxt.color = 0xFF00BC12;
+		if (botEnergy < 0.2)
+			energyBar.color = energyTxt.color = 0xFFC60000;
+		else if (botEnergy > 1.8)
+			energyBar.color = energyTxt.color = 0xFF00BC12;
+		else
+			energyBar.color = energyTxt.color = 0xFF0094FF;
 
 		energyTxt.text = (botEnergy < 2 ? FlxMath.roundDecimal(botEnergy * 50, 0) + '%' : 'Full');
 		energyTxt.y = (FlxG.height / 1.3) - (botEnergy * 50 * 4);
 
-		final cachedShowcaseMode = ClientPrefs.showcaseMode;
 		if (cachedShowcaseMode && botplayTxt != null)
 		{
-			botplayTxt.text = '${formatNumber(Math.abs(enemyHits))}/${formatNumber(Math.abs(totalNotesPlayed))}\nNPS: ${formatNumber(nps)}/${formatNumber(maxNPS)}\nOpp NPS: ${formatNumber(oppNPS)}/${formatNumber(maxOppNPS)}';
-			if (polyphonyOppo != 1 || polyphonyBF != 1)
+			if (shouldRefreshShowcaseStats(enemyHits, totalNotesPlayed, nps, maxNPS, oppNPS, maxOppNPS, polyphonyOppo, polyphonyBF))
 			{
-				var set:String = formatNumber(polyphonyBF);
-				if (formatNumber(polyphonyOppo) != formatNumber(polyphonyBF))
-					set = formatNumber(polyphonyOppo) + "/" + formatNumber(polyphonyBF);
-				botplayTxt.text += '\nNote Multiplier: ' + set;
+				final enemyHitStr = formatNumber(Math.abs(enemyHits));
+				final totalNotesStr = formatNumber(Math.abs(totalNotesPlayed));
+				final npsStr = formatNumber(nps);
+				final maxNpsStr = formatNumber(maxNPS);
+				final oppNpsStr = formatNumber(oppNPS);
+				final maxOppNpsStr = formatNumber(maxOppNPS);
+				var text = '$enemyHitStr/$totalNotesStr\nNPS: $npsStr/$maxNpsStr\nOpp NPS: $oppNpsStr/$maxOppNpsStr';
+				if (polyphonyOppo != 1 || polyphonyBF != 1)
+				{
+					var set:String = formatNumber(polyphonyBF);
+					final oppStr = formatNumber(polyphonyOppo);
+					if (oppStr != set)
+						set = oppStr + "/" + set;
+					text += '\nNote Multiplier: ' + set;
+				}
+
+				if (botplayTxt.text != text)
+					botplayTxt.text = text;
 			}
 		}
 
@@ -3496,10 +3575,10 @@ class PlayState extends MusicBeatState
 			reloadHealthBarColors(dad.healthColorArray, boyfriend.healthColorArray);
 		}
 
-		if(!inCutscene && ClientPrefs.charsAndBG) {
+		if(!inCutscene && cachedCharsAndBG) {
 			final lerpVal:Float = CoolUtil.boundTo(elapsed * 2.4 * cameraSpeed * playbackRate, 0, 1);
 			camFollowPos.setPosition(FlxMath.lerp(camFollowPos.x + moveCamTo[0]/102, camFollow.x + moveCamTo[0]/102, lerpVal), FlxMath.lerp(camFollowPos.y + moveCamTo[1]/102, camFollow.y + moveCamTo[1]/102, lerpVal));
-			if (ClientPrefs.charsAndBG && !boyfriendIdled) {
+			if (cachedCharsAndBG && !boyfriendIdled) {
 				if(!startingSong && !endingSong && boyfriend.animation.curAnim != null && boyfriend.animation.curAnim.name.startsWith('idle')) {
 					boyfriendIdleTime += elapsed;
 					if(boyfriendIdleTime >= 0.15) { // Kind of a mercy thing for making the achievement easier to get as it's apparently frustrating to some playerss
@@ -3531,7 +3610,7 @@ class PlayState extends MusicBeatState
 			if (scoreTxtUpdateFrame <= 8 && scoreTxt != null) updateScore();
 		}
 
-		if (ClientPrefs.showcaseMode && !ClientPrefs.charsAndBG && hitTxt != null) {
+		if (cachedShowcaseMode && !cachedCharsAndBG && hitTxt != null) {
 			hitTxtUpdateTimer -= elapsed;
 			if (hitTxtUpdateTimer <= 0) {
 				hitTxtUpdateTimer = HIT_TXT_UPDATE_INTERVAL;
@@ -3554,8 +3633,8 @@ class PlayState extends MusicBeatState
 		if (hitImagesFrame > 0) hitImagesFrame = 0;
 
 		if (lerpingScore) updateScore();
-		if (shownScore != songScore && ClientPrefs.scoreStyle == 'JS Engine' && Math.abs(shownScore - songScore) >= 10) {
-			shownScore = FlxMath.lerp(shownScore, songScore, 0.2 / ((!ffmpegMode ? ClientPrefs.framerate : targetFPS) / 60));
+		if (shownScore != songScore && cachedScoreStyle == 'JS Engine' && Math.abs(shownScore - songScore) >= 10) {
+			shownScore = FlxMath.lerp(shownScore, songScore, 0.2 / ((!cachedFfmpegMode ? cachedFramerate : cachedTargetFPS) / 60));
 				lerpingScore = true; // Indicate that lerping is in progress
 		} else {
 			shownScore = songScore;
@@ -3576,7 +3655,7 @@ class PlayState extends MusicBeatState
 		}
 		
 		// Update random botplay text periodically to prevent excessive updates
-		if (cpuControlled && cachedRandomBotplayText && cachedBotTxtStyle != 'Hide' && ffmpegInfo != 'Frame Time' && botplayTxt != null)
+		if (cpuControlled && cachedRandomBotplayText && !cachedShowcaseMode && cachedBotTxtStyle != 'Hide' && ffmpegInfo != 'Frame Time' && botplayTxt != null)
 		{
 			botplayTextTimer += elapsed;
 			if (botplayTextTimer >= botplayTextInterval) {
@@ -3603,7 +3682,7 @@ class PlayState extends MusicBeatState
 			switch(SONG.event7)
 				{
 				case "---" | null | '' | 'None':
-				if (!ClientPrefs.antiCheatEnable)
+				if (!cachedAntiCheatEnabled)
 				{
 				openChartEditor();
 				}
@@ -3634,7 +3713,7 @@ class PlayState extends MusicBeatState
 					bg.cameras = [camHUD];
 					startVideo(SONG.event7Value, function() Sys.exit(0));
 				}
-			else if (!ClientPrefs.antiCheatEnable)
+			else if (!cachedAntiCheatEnabled)
 				{
 					openChartEditor();
 				}
@@ -3718,7 +3797,8 @@ class PlayState extends MusicBeatState
 		{
 			if (!paused)
 			{
-				if(updateTime && FlxG.game.ticks % (Std.int(ClientPrefs.framerate / 60) > 0 ? Std.int(ClientPrefs.framerate / 60) : 1) == 0) {
+				final frameDiv:Int = Std.int(cachedFramerate / 60);
+				if(updateTime && FlxG.game.ticks % (frameDiv > 0 ? frameDiv : 1) == 0) {
 					if (timeBar.visible) {
 						songPercent = Conductor.songPosition / songLength;
 					}
@@ -3771,16 +3851,17 @@ class PlayState extends MusicBeatState
 				if(!cpuControlled) {
 					keyShit();
 				}
-				else if (ClientPrefs.charsAndBG) playerDance();
+				else if (cachedCharsAndBG) playerDance();
 
 				amountOfRenderedNotes = 0;
+				final noteSortOrder = cachedDownScroll ? FlxSort.ASCENDING : FlxSort.DESCENDING;
 				for (group in noteGroups)
 				{
 					group.forEach(function(daNote)
 					{
 						updateNote(daNote);
 					});
-					group.sort(FlxSort.byY, ClientPrefs.downScroll ? FlxSort.ASCENDING : FlxSort.DESCENDING);
+					group.sort(FlxSort.byY, noteSortOrder);
 				}
 			}
 
@@ -3840,7 +3921,7 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (ClientPrefs.showRendered)
+		if (cachedShowRendered)
 		{
 			if (!ffmpegMode) renderedTxt.text = 'Rendered/Skipped: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(skippedCount)}/${formatNumber(maxRenderedNotes)}/${formatNumber(maxSkipped)}';
 			else renderedTxt.text = 'Rendered Notes: ${formatNumber(amountOfRenderedNotes)}/${formatNumber(maxRenderedNotes)}/${formatNumber(notes.members.length + sustainNotes.members.length)}';
@@ -3858,7 +3939,7 @@ class PlayState extends MusicBeatState
 
 		if (ffmpegMode)
 		{
-			if (!ClientPrefs.oldFFmpegMode) pipeFrame();
+			if (!cachedOldFfmpegMode) pipeFrame();
 			else
 			{
 				var filename = CoolUtil.zeroFill(frameCaptured, 7);
@@ -3873,7 +3954,7 @@ class PlayState extends MusicBeatState
 					catch (e) {}
 				}
 			}
-			if (ClientPrefs.renderGCRate > 0 && (frameCaptured / targetFPS) % ClientPrefs.renderGCRate == 0) openfl.system.System.gc();
+			if (cachedRenderGCRate > 0 && (frameCaptured / targetFPS) % cachedRenderGCRate == 0) openfl.system.System.gc();
 			frameCaptured++;
 		}
 
@@ -3883,11 +3964,11 @@ class PlayState extends MusicBeatState
 				case 'Frame Time': botplayTxt.text = CoolUtil.floatToStringPrecision(haxe.Timer.stamp() - takenTime, 3) + 's';
 				case 'Time Remaining':
 					var timeETA:String = CoolUtil.formatTime((FlxG.sound.music.length - Conductor.songPosition) * (60 / Main.fpsVar.currentFPS), 2);
-					if (ClientPrefs.showcaseMode) botplayTxt.text += '\nTime Remaining: ' + timeETA;
+					if (cachedShowcaseMode) botplayTxt.text += '\nTime Remaining: ' + timeETA;
 					else botplayTxt.text = ogBotTxt + '\nTime Remaining: ' + timeETA;
 				case 'Rendering Time':
 					totalRenderTime = haxe.Timer.stamp() - startingTime;
-					if (ClientPrefs.showcaseMode) botplayTxt.text += '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
+					if (cachedShowcaseMode) botplayTxt.text += '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
 					else botplayTxt.text = ogBotTxt + '\nTime Taken: ' + CoolUtil.formatTime(totalRenderTime * 1000, 2);
 
 				default:
@@ -4896,7 +4977,10 @@ class PlayState extends MusicBeatState
 	public function KillNotes() {
 		for (group in noteGroups)
 		while (group.length > 0) {
-			group.remove(group.members[0], true);
+			final note = group.members[0];
+			group.remove(note, true);
+			if (note != null)
+				releaseNoteInstance(note);
 		}
 		//unspawnNotes = [];
 		//eventNotes = [];
@@ -5214,9 +5298,12 @@ class PlayState extends MusicBeatState
 	private function keyPressed(key:Int):Void
 	{
 		// Allow input playback during botplay mode, but prevent normal key presses
-		if (key < 0) return;
-		if(!cpuControlled && (cpuControlled || paused || key < 0)) return;
-		if(!generatedMusic || endingSong || boyfriend.stunned) return;
+		if (key < 0)
+			return;
+		if (cpuControlled || paused)
+			return;
+		if(!generatedMusic || endingSong || boyfriend.stunned)
+			return;
 		ensureLaneHelperLength(key + 1);
 
 		// Record the input event (only during normal gameplay, not botplay)
@@ -5239,15 +5326,7 @@ class PlayState extends MusicBeatState
 		var canMiss:Bool = !ClientPrefs.ghostTapping;
 
 		// obtain notes that the player can hit
-		var plrInputNotes:Array<Note> = [];
-		if (!guardPrevented)
-		{
-			plrInputNotes = notes.members.filter(function(n:Note):Bool {
-				var canHit:Bool = !usingBotEnergy && !strumsBlocked[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
-				return n != null && canHit && !n.isSustainNote && n.noteData == key;
-			});
-			plrInputNotes.sort(sortHitNotes);
-		}
+		var plrInputNotes:Array<Note> = gatherLaneHitBuffer(key, guardPrevented);
 
 		if (plrInputNotes.length != 0) {
 			var funnyNote:Note = plrInputNotes[0]; // front note
@@ -5290,6 +5369,38 @@ class PlayState extends MusicBeatState
 			spr.resetAnim = 0;
 		}
 		callOnLuas('onKeyPress', [key]);
+	}
+
+	inline function gatherLaneHitBuffer(key:Int, guardPrevented:Bool):Array<Note>
+	{
+		laneHitBuffer.resize(0);
+		if (guardPrevented || usingBotEnergy || notes == null)
+			return laneHitBuffer;
+
+		final members = notes.members;
+		if (members == null)
+			return laneHitBuffer;
+
+		final blockLen:Int = strumsBlocked.length;
+
+		for (note in members)
+		{
+			if (note == null || note.isSustainNote || note.noteData != key)
+				continue;
+			if (!note.mustPress || !note.canBeHit || note.tooLate || note.wasGoodHit || note.blockHit)
+				continue;
+
+			final lane = note.noteData;
+			if (lane >= 0 && lane < blockLen && strumsBlocked[lane])
+				continue;
+
+			laneHitBuffer.push(note);
+		}
+
+		if (laneHitBuffer.length > 1)
+			laneHitBuffer.sort(sortHitNotes);
+
+		return laneHitBuffer;
 	}
 
 	private function processGhostTap(key:Int, canMiss:Bool, preventedByMash:Bool, preventedBySpam:Bool):Void
@@ -5561,16 +5672,16 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		// TO DO: Find a better way to handle controller inputs, this should work for now
-		if(ClientPrefs.controllerMode)
+		// Controller input handling mimics keyboard presses without allocating synthetic events
+		if (ClientPrefs.controllerMode && pressArray.contains(true))
 		{
-			if(pressArray.contains(true))
+			for (i in 0...pressArray.length)
 			{
-				for (i in 0...pressArray.length)
-				{
-					if(pressArray[i] && strumsBlocked[i] != true && !isLaneMashLocked(i))
-						onKeyPress(new KeyboardEvent(KeyboardEvent.KEY_DOWN, true, true, -1, keysArray[i][0]));
-				}
+				if (!pressArray[i])
+					continue;
+				if (strumsBlocked[i] == true || isLaneMashLocked(i))
+					continue;
+				keyPressed(i);
 			}
 		}
 
@@ -5647,16 +5758,14 @@ class PlayState extends MusicBeatState
 			#end
 		}
 
-		// TO DO: Find a better way to handle controller inputs, this should work for now
-		if(ClientPrefs.controllerMode || strumsBlocked.contains(true))
+		// Release controller-held lanes or unblock stuck strums without firing fake events
+		if ((ClientPrefs.controllerMode || strumsBlocked.contains(true)) && releaseArray.contains(true))
 		{
-			if(releaseArray.contains(true))
+			for (i in 0...releaseArray.length)
 			{
-				for (i in 0...releaseArray.length)
-				{
-					if(releaseArray[i] || strumsBlocked[i] == true)
-						onKeyRelease(new KeyboardEvent(KeyboardEvent.KEY_UP, true, true, -1, keysArray[i][0]));
-				}
+				if (!releaseArray[i] && strumsBlocked[i] != true)
+					continue;
+				keyReleased(i);
 			}
 		}
 	}
@@ -5844,8 +5953,9 @@ class PlayState extends MusicBeatState
 			}
 			if (ClientPrefs.showNotes || !ClientPrefs.showNotes && !cpuControlled)
 			{
-		while (limitNC < noteLimit && targetNote.strumTime - Conductor.songPosition < (NOTE_SPAWN_TIME / targetNote.multSpeed)) {
-					spawnedNote = new Note();
+			while (limitNC < noteLimit && targetNote.strumTime - Conductor.songPosition < (NOTE_SPAWN_TIME / targetNote.multSpeed)) {
+					spawnedNote = acquireNoteInstance();
+					spawnedNote.revive();
 					(targetNote.isSustainNote ? sustainNotes : notes).add(spawnedNote);
 					spawnedNote.setupNoteData(targetNote);
 
@@ -5856,6 +5966,19 @@ class PlayState extends MusicBeatState
 				}
 			}
 		}
+	}
+
+	inline function acquireNoteInstance():Note
+	{
+		if (notePool.length > 0)
+		{
+			final note = notePool.pop();
+			note.exists = true;
+			note.active = true;
+			note.visible = true;
+			return note;
+		}
+		return new Note();
 	}
 
 	function updateNote(daNote:Note):Void
@@ -6305,8 +6428,26 @@ class PlayState extends MusicBeatState
 			if (!ClientPrefs.lowQuality || !cpuControlled)
 				note.kill();
 			(note.isSustainNote ? sustainNotes : notes).remove(note, true);
+			releaseNoteInstance(note);
 		}
 		killNotes = [];
+	}
+
+	inline function releaseNoteInstance(note:Note):Void
+	{
+		if (note == null)
+			return;
+		note.exists = false;
+		note.active = false;
+		note.visible = false;
+		if (note.noteHoldSplash != null)
+		{
+			note.noteHoldSplash.kill();
+			note.noteHoldSplash = null;
+		}
+		if (note.extraData != null)
+			note.extraData.clear();
+		notePool.push(note);
 	}
 
 	public function spawnHoldSplashOnNote(note:Note, ?isDad:Bool = false) {
@@ -6377,6 +6518,7 @@ class PlayState extends MusicBeatState
 		FlxG.sound.music.pitch = 1;
 		cpp.vm.Gc.enable(true);
 		KillNotes();
+		notePool = [];
 		unspawnNotes = [];
 		eventNotes = [];
 		MusicBeatState.windowNamePrefix = Assets.getText(Paths.txt("windowTitleBase", "preload"));

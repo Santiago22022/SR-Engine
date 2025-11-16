@@ -2,7 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="Friday Night Funkin': SR Engine" file="SREngine" packageName="com.santiago.SREngine" package="com.santiago.SREngine" main="Main" version="0.0.1" company="Santiago" />
+	<app title="Friday Night Funkin': SR Engine" file="SREngine" packageName="com.santiago.SREngine" package="com.santiago.SREngine" main="Main" version="0.3.0" company="Santiago" />
 	<app preloader="flixel.system.FlxPreloader" />
 
 	<!-- ____________________________ Window Settings ___________________________ -->
@@ -34,7 +34,7 @@
 	<define name="LUA_ALLOWED" if="desktop || mobile" unless="web || hl" />
 	<define name="HSCRIPT_ALLOWED" if="desktop || mobile || web" />
 	<define name="ACHIEVEMENTS_ALLOWED" />
-	<define name="SHADERS_ALLOWED" unless="flash"/> 
+	<define name="SHADERS_ALLOWED" unless="flash"/>
 	<define name="VIDEOS_ALLOWED" if="desktop || mobile" unless="32bits || web"/>
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE WATERMARKS/DEV NAMES ON TITLE SCREEN -->
 	<define name="DISCORD_ALLOWED" if="desktop || mobile" unless="web" />

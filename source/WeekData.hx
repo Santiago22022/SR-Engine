@@ -19,10 +19,18 @@ typedef WeekFile =
 	var ?difficulties:String;
 }
 
+private typedef CachedWeekEntry =
+{
+	var timestamp:Float;
+	var data:WeekFile;
+}
+
 class WeekData {
 	public static var weeksLoaded:Map<String, WeekData> = new Map<String, WeekData>();
 	public static var weeksList:Array<String> = [];
+	static var cachedWeekFiles:Map<String, CachedWeekEntry> = new Map();
 	public var folder:String = '';
+	static final REQUIRED_WEEK_FIELDS:Array<String> = ["songs", "weekCharacters", "weekName"];
 
 	// JSON variables
 	public var songs:Array<Dynamic>;
@@ -122,27 +130,30 @@ class WeekData {
 		var originalLength:Int = directories.length;
 		#end
 
-		var sexList:Array<String> = CoolUtil.coolTextFile(Paths.getPreloadPath('weeks/weekList.txt'));
-		for (i in 0...sexList.length) {
-			for (j in 0...directories.length) {
-				var fileToCheck:String = directories[j] + 'weeks/' + sexList[i] + '.json';
-				if(!weeksLoaded.exists(sexList[i])) {
-					var week:WeekFile = getWeekFile(fileToCheck);
-					if(week != null) {
-						var weekFile:WeekData = new WeekData(week, sexList[i]);
+		final baseWeekList:Array<String> = CoolUtil.coolTextFile(Paths.getPreloadPath('weeks/weekList.txt'));
+		for (weekName in baseWeekList)
+		{
+			if (weeksLoaded.exists(weekName))
+				continue;
 
-						#if MODS_ALLOWED
-						if(j >= originalLength) {
-							weekFile.folder = directories[j].substring(Paths.mods().length, directories[j].length-1);
-						}
-						#end
+			for (j in 0...directories.length)
+			{
+				var fileToCheck:String = directories[j] + 'weeks/' + weekName + '.json';
+				var week:WeekFile = getWeekFile(fileToCheck);
+				if (week == null)
+					continue;
 
-						if(weekFile != null && (isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))) {
-							weeksLoaded.set(sexList[i], weekFile);
-							weeksList.push(sexList[i]);
-						}
-					}
-				}
+				var weekData:WeekData = new WeekData(week, weekName);
+
+				#if MODS_ALLOWED
+				if (j >= originalLength)
+					assignModFolder(weekData, directories[j]);
+				#end
+
+				if (shouldIncludeWeek(weekData, isStoryMode))
+					registerWeek(weekName, weekData);
+
+				break;
 			}
 		}
 
@@ -177,9 +188,7 @@ class WeekData {
 	{
 		if (data == null) return false;
 
-		final requiredFields = ["songs", "weekCharacters", "weekName"];
-
-		for (field in requiredFields)
+		for (field in REQUIRED_WEEK_FIELDS)
 		{
 			if (!Reflect.hasField(data, field))
 				return false;
@@ -193,6 +202,30 @@ class WeekData {
 		return true;
 	}
 
+	inline static function shouldIncludeWeek(weekFile:WeekData, isStoryMode:Null<Bool>):Bool
+	{
+		if (isStoryMode == null)
+			return true;
+		return isStoryMode ? !weekFile.hideStoryMode : !weekFile.hideFreeplay;
+	}
+
+	inline static function registerWeek(weekName:String, data:WeekData):Void
+	{
+		weeksLoaded.set(weekName, data);
+		weeksList.push(weekName);
+	}
+
+	#if MODS_ALLOWED
+	inline static function assignModFolder(weekFile:WeekData, directory:String):Void
+	{
+		if (directory == null)
+			return;
+		final modsPath = Paths.mods();
+		if (directory.length > modsPath.length)
+			weekFile.folder = directory.substring(modsPath.length, directory.length - 1);
+	}
+	#end
+
 	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
 	{
 		if(!weeksLoaded.exists(weekToCheck))
@@ -204,39 +237,143 @@ class WeekData {
 				if(i >= originalLength)
 				{
 					#if MODS_ALLOWED
-					weekFile.folder = directory.substring(Paths.mods().length, directory.length-1);
+					assignModFolder(weekFile, directory);
 					#end
 				}
-				if((PlayState.isStoryMode && !weekFile.hideStoryMode) || (!PlayState.isStoryMode && !weekFile.hideFreeplay))
+				if(shouldIncludeWeek(weekFile, PlayState.isStoryMode))
 				{
-					weeksLoaded.set(weekToCheck, weekFile);
-					weeksList.push(weekToCheck);
+					registerWeek(weekToCheck, weekFile);
 				}
 			}
 		}
 	}
 
 	private static function getWeekFile(path:String):WeekFile {
-		var rawJson:String = null;
 		#if MODS_ALLOWED
 		if(FileSystem.exists(path)) {
-			rawJson = File.getContent(path);
+			final timestamp = getModifiedTime(path);
+			final cached = getCachedWeek(path, timestamp);
+			if (cached != null)
+				return cached;
+
+			final rawJson = File.getContent(path);
+			if (rawJson != null && rawJson.length > 0)
+				return parseAndCacheWeek(path, rawJson, timestamp);
+		} else {
+			cachedWeekFiles.remove(path);
 		}
 		#else
 		if(OpenFlAssets.exists(path)) {
-			rawJson = Assets.getText(path);
+			final cached = getCachedWeek(path, -1);
+			if (cached != null)
+				return cached;
+
+			final rawJson = Assets.getText(path);
+			if (rawJson != null && rawJson.length > 0)
+				return parseAndCacheWeek(path, rawJson, -1);
+		} else {
+			cachedWeekFiles.remove(path);
 		}
 		#end
 
-		if (rawJson != null && rawJson.length > 0)
-		{
-			var parsed:Dynamic = haxe.Json.parse(rawJson);
-			if (isValidWeekJson(parsed))
-				return cast parsed;
-			else
-				return null; // Skip invalid week jsons
-		}
 		return null;
+	}
+
+	inline static function getCachedWeek(path:String, timestamp:Float):WeekFile
+	{
+		final cached = cachedWeekFiles.get(path);
+		if (cached == null)
+			return null;
+
+		if (timestamp >= 0 && cached.timestamp != timestamp)
+		{
+			cachedWeekFiles.remove(path);
+			return null;
+		}
+
+		if (timestamp < 0 && cached.timestamp >= 0)
+			return null;
+
+		return copyWeekFile(cached.data);
+	}
+
+	static function parseAndCacheWeek(path:String, rawJson:String, timestamp:Float):WeekFile
+	{
+		try
+		{
+			final parsed:Dynamic = haxe.Json.parse(rawJson);
+			if (isValidWeekJson(parsed))
+			{
+				final data:WeekFile = copyWeekFile(cast parsed);
+				cachedWeekFiles.set(path, {timestamp: timestamp, data: data});
+				return copyWeekFile(data);
+			}
+		}
+		catch (e:Dynamic)
+		{
+			#if debug
+			trace('Failed to parse week file $path: $e');
+			#end
+		}
+
+		cachedWeekFiles.remove(path);
+		return null;
+	}
+
+	#if MODS_ALLOWED
+	inline static function getModifiedTime(path:String):Float
+	{
+		final stats = FileSystem.stat(path);
+		return (stats != null && stats.mtime != null) ? stats.mtime.getTime() : -1;
+	}
+	#end
+
+	private static function copyWeekFile(source:WeekFile):WeekFile
+	{
+		if (source == null)
+			return null;
+
+		return {
+			songs: copySongEntries(source.songs),
+			weekCharacters: source.weekCharacters != null ? source.weekCharacters.copy() : [],
+			weekBackground: source.weekBackground,
+			weekBefore: source.weekBefore,
+			storyName: source.storyName,
+			weekName: source.weekName,
+			freeplayColor: source.freeplayColor != null ? source.freeplayColor.copy() : [],
+			startUnlocked: source.startUnlocked,
+			hiddenUntilUnlocked: source.hiddenUntilUnlocked,
+			hideStoryMode: source.hideStoryMode,
+			hideFreeplay: source.hideFreeplay,
+			difficulties: source.difficulties
+		};
+	}
+
+	private static function copySongEntries(source:Array<Dynamic>):Array<Dynamic>
+	{
+		if (source == null)
+			return [];
+
+		final result:Array<Dynamic> = [];
+		for (entry in source)
+		{
+			if (Std.isOfType(entry, Array))
+			{
+				final data:Array<Dynamic> = cast entry;
+				final copied:Array<Dynamic> = [];
+				for (value in data)
+				{
+					if (Std.isOfType(value, Array))
+						copied.push((cast value:Array<Dynamic>).copy());
+					else
+						copied.push(value);
+				}
+				result.push(copied);
+			}
+			else
+				result.push(entry);
+		}
+		return result;
 	}
 
 	//   FUNCTIONS YOU WILL PROBABLY NEVER NEED TO USE

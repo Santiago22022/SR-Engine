@@ -594,23 +594,27 @@ class Controls extends FlxActionSet
 	 * Sets all actions that pertain to the binder to trigger when the supplied keys are used.
 	 * If binder is a literal you can inline this
 	 */
-	public function bindKeys(control:Control, keys:Array<FlxKey>) {
-		var copyKeys:Array<FlxKey> = keys.copy();
-		for (i in 0...copyKeys.length) {
-			if (i == NONE)
-				copyKeys.remove(i);
-		}
+	inline static function sanitizeKeys(source:Array<FlxKey>):Array<FlxKey>
+	{
+		var cleaned:Array<FlxKey> = [];
+		if (source == null)
+			return cleaned;
 
+		for (key in source)
+		{
+			if (key != NONE)
+				cleaned.push(key);
+		}
+		return cleaned;
+	}
+
+	public function bindKeys(control:Control, keys:Array<FlxKey>) {
+		var copyKeys:Array<FlxKey> = sanitizeKeys(keys);
 		inline forEachBound(control, (action, state) -> addKeys(action, copyKeys, state));
 	}
 
 	public function unbindKeys(control:Control, keys:Array<FlxKey>) {
-		var copyKeys:Array<FlxKey> = keys.copy();
-		for (i in 0...copyKeys.length) {
-			if (i == NONE)
-				copyKeys.remove(i);
-		}
-
+		var copyKeys:Array<FlxKey> = sanitizeKeys(keys);
 		inline forEachBound(control, (action, _) -> removeKeys(action, copyKeys));
 	}
 
@@ -708,6 +712,9 @@ class Controls extends FlxActionSet
 	{
 		gamepadsAdded.push(id);
 
+		if (buttonMap == null)
+			return;
+
 		for (control => buttons in buttonMap)
 			inline bindButtons(control, id, buttons);
 	}
@@ -715,6 +722,9 @@ class Controls extends FlxActionSet
 	inline function addGamepadLiteral(id:Int, ?buttonMap:Map<Control, Array<FlxGamepadInputID>>):Void
 	{
 		gamepadsAdded.push(id);
+
+		if (buttonMap == null)
+			return;
 
 		for (control => buttons in buttonMap)
 			inline bindButtons(control, id, buttons);

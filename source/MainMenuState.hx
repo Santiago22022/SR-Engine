@@ -15,7 +15,7 @@ class MainMenuState extends MusicBeatState
 {
 	public static final gitCommit:String = HaxeCommit.getGitCommitHash();
 
-	public static var psychEngineJSVersionNumber:String = '0.0.1-build.14'; //This is also used for Discord RPC
+	public static var psychEngineJSVersionNumber:String = '0.0.1-PreRelease'; //This is also used for Discord RPC
 	public static var psychEngineJSVersion:String = psychEngineJSVersionNumber; //This is also used for Discord RPC
 	public static var psychEngineVersion:String = '0.6.3'; //This is also used for Discord RPC
 	public static var curSelected:Int = 0;
@@ -50,8 +50,11 @@ class MainMenuState extends MusicBeatState
 
 	var tipsArray:Array<String> = [];
 	var canDoTips:Bool = true; // in case the tips don't exist lol
+	var lastTipIndex:Int = -1;
 
 	var funnycatperson:FlxSprite;
+	static var cachedTips:Array<String> = null;
+	static var cachedTipsPath:String = null;
 
 	override function create()
 	{
@@ -59,9 +62,9 @@ class MainMenuState extends MusicBeatState
 		Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
 
-		tipsArray = CoolUtil.coolTextFile(Paths.txt('funnyTips'));
-		if (tipsArray == null){
-			canDoTips = false;
+		tipsArray = fetchTipsArray();
+		canDoTips = tipsArray != null && tipsArray.length > 0;
+		if (!canDoTips){
 			trace('The tips don\'t exist!');
 		}
 
@@ -157,7 +160,7 @@ class MainMenuState extends MusicBeatState
 
 		FlxG.camera.follow(camFollow, null, 1);
 
-		var JSVersion:FlxText = new FlxText(12, FlxG.height - 64, 0, "JS Engine v" + psychEngineJSVersion, 12);
+		var JSVersion:FlxText = new FlxText(12, FlxG.height - 64, 0, "SR Engine v" + psychEngineJSVersion, 12);
 		JSVersion.scrollFactor.set();
 		JSVersion.setFormat("VCR OSD Mono", 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(JSVersion);
@@ -212,7 +215,8 @@ class MainMenuState extends MusicBeatState
 	//credit to stefan2008 and sb engine for this code
 	function tipTextStartScrolling()
 	{
-		if (!canDoTips) return;
+		if (!canDoTips || tipText == null)
+			return;
 
 		tipText.x = tipTextMargin;
 		tipText.y = -tipText.height;
@@ -240,11 +244,8 @@ class MainMenuState extends MusicBeatState
 	}
 	function changeTipText() {
 		if (!canDoTips) return;
-		var selectedText = tipsArray[FlxG.random.int(0, tipsArray.length - 1)].replace('--', '\n');
-    while (selectedText == lastString && tipsArray.length > 1) {
-        selectedText = tipsArray[FlxG.random.int(0, tipsArray.length - 1)].replace('--', '\n');
-    }
-
+		var selectedText:String = pickTipString();
+		if (selectedText == null) return;
 		lastString = selectedText;
 
 		tipText.alpha = 1;
@@ -264,6 +265,34 @@ class MainMenuState extends MusicBeatState
 				});
 			}
 		});
+	}
+
+	inline function pickTipString():String
+	{
+		if (tipsArray == null || tipsArray.length == 0)
+			return null;
+		if (tipsArray.length == 1)
+		{
+			lastTipIndex = 0;
+			return tipsArray[0].replace('--', '\n');
+		}
+
+		var idx:Int = FlxG.random.int(0, tipsArray.length - 1);
+		if (idx == lastTipIndex)
+			idx = (idx + 1) % tipsArray.length;
+		lastTipIndex = idx;
+		return tipsArray[idx].replace('--', '\n');
+	}
+
+	function fetchTipsArray():Array<String>
+	{
+		final tipPath:String = Paths.txt('funnyTips');
+		if (cachedTipsPath != tipPath)
+		{
+			cachedTipsPath = tipPath;
+			cachedTips = CoolUtil.coolTextFile(tipPath);
+		}
+		return cachedTips;
 	}
 
 	override function update(elapsed:Float)
@@ -310,7 +339,7 @@ class MainMenuState extends MusicBeatState
 			{
 				if (optionShit[curSelected] == 'donate')
 				{
-					CoolUtil.browserLoad('https://github.com/JordanSantiagoYT/FNF-JS-Engine');
+					CoolUtil.browserLoad('https://github.com/Santiago22022/SR-Engine');
 				}
 				else
 				{

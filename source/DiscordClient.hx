@@ -21,6 +21,7 @@ class DiscordClient
 	private static var presence:DiscordRichPresence = new DiscordRichPresence(); // I think for now we don't need DiscordPresence.create();
 	// hides this field from scripts and reflection in general
 	@:unreflective private static var __thread:Thread;
+	private static var closeHandlerRegistered:Bool = false;
 
 	public static function check()
 	{
@@ -33,9 +34,13 @@ class DiscordClient
 		if (!isInitialized && ClientPrefs.discordRPC)
 			initialize();
 
-		Application.current.window.onClose.add(function() {
-			if(isInitialized) shutdown();
-		});
+		if (!closeHandlerRegistered)
+		{
+			closeHandlerRegistered = true;
+			Application.current.window.onClose.add(function() {
+				if(isInitialized) shutdown();
+			});
+		}
 	}
 
 	public dynamic static function shutdown()
@@ -101,23 +106,28 @@ class DiscordClient
 		isInitialized = true;
 	}
 
-	public static function changePresence(details:String = 'Jaime te persige...', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Float, largeImageKey:String = 'icon')
+	public static function changePresence(details:String = 'Jaime te persige...', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Null<Float>, largeImageKey:String = 'icon')
 	{
-		var startTimestamp:Float = 0;
-		if (hasStartTimestamp) startTimestamp = Date.now().getTime();
-		if (endTimestamp > 0) endTimestamp = startTimestamp + endTimestamp;
+		var startTimestamp:Float = (hasStartTimestamp == true) ? Date.now().getTime() : 0;
+		var endTimestampValue:Float = 0;
+		if (endTimestamp != null && endTimestamp > 0)
+		{
+			if (startTimestamp <= 0)
+				startTimestamp = Date.now().getTime();
+			endTimestampValue = startTimestamp + endTimestamp;
+		}
 
 		presence.state = state;
 		presence.details = details;
 		presence.smallImageKey = smallImageKey;
 		presence.largeImageKey = largeImageKey;
-		presence.largeImageText = "Engine Version: " + MainMenuState.psychEngineJSVersion;
+		presence.largeImageText = "SR Engine Version: " + MainMenuState.psychEngineJSVersion;
 		// Obtained times are in milliseconds so they are divided so Discord can use it
-		presence.startTimestamp = Std.int(startTimestamp / 1000);
-		presence.endTimestamp = Std.int(endTimestamp / 1000);
+		presence.startTimestamp = startTimestamp > 0 ? Std.int(startTimestamp / 1000) : 0;
+		presence.endTimestamp = endTimestampValue > 0 ? Std.int(endTimestampValue / 1000) : 0;
 
 		final button:DiscordButton = new DiscordButton();
-		button.label = "Engine Source Code";
+		button.label = "SR Engine Source Code";
 		button.url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 		presence.buttons[0] = button;
 		updatePresence();
@@ -125,6 +135,8 @@ class DiscordClient
 
 	public static function updatePresence()
 	{
+		if (!isInitialized)
+			return;
 		Discord.UpdatePresence(RawConstPointer.addressOf(presence));
 	}
 

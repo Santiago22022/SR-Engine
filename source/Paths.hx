@@ -3,6 +3,7 @@ package;
 import flixel.animation.FlxAnimationController;
 import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxFramesCollection;
+import haxe.ds.StringMap;
 import haxe.io.Bytes;
 import haxe.io.Path;
 import lime.media.AudioBuffer;
@@ -270,7 +271,7 @@ class Paths
 		for (key in currentTrackedAssets.keys())
 		{
 			// if it is not currently contained within the used local assets
-			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key))
+			if (!localTrackedAssets.exists(key) && !dumpExclusions.contains(key))
 			{
 				destroyGraphic(currentTrackedAssets.get(key)); // get rid of the graphic
 				currentTrackedAssets.remove(key); // and remove the key from local cache map
@@ -279,10 +280,11 @@ class Paths
 		// run the garbage collector for good measure lmfao
 		compress();
 		gc(true);
+		localTrackedAssets = new StringMap<Bool>();
 	}
 
 	// define the locally tracked assets
-	public static var localTrackedAssets:Array<String> = [];
+	public static var localTrackedAssets:StringMap<Bool> = new StringMap<Bool>();
 
 	@:access(flixel.system.frontEnds.BitmapFrontEnd._cache)
 	public static function clearStoredMemory(?cleanUnused:Bool = false) {
@@ -294,7 +296,7 @@ class Paths
 		}
 		// clear all sounds that are cached
 		for (key in currentTrackedSounds.keys()) {
-			if (!localTrackedAssets.contains(key)
+			if (!localTrackedAssets.exists(key)
 			&& !dumpExclusions.contains(key) && key != null) {
 				//trace('test: ' + dumpExclusions, key);
 				Assets.cache.clear(key);
@@ -302,7 +304,7 @@ class Paths
 			}
 		}
 		// flags everything to be cleared out next unused memory clear
-		localTrackedAssets = [];
+		localTrackedAssets = new StringMap<Bool>();
 		#if !html5 openfl.Assets.cache.clear("songs"); #end
 		gc(true);
 		compress();
@@ -572,7 +574,7 @@ class Paths
 		var bitmap:BitmapData = null;
 		if (currentTrackedAssets.exists(key))
 		{
-			localTrackedAssets.push(key);
+			tagLocalAsset(key);
 			return currentTrackedAssets.get(key);
 		}
 		return cacheBitmap(key, parentFolder, bitmap);
@@ -596,28 +598,48 @@ class Paths
 			}
 		}
 
-		if (ClientPrefs.cacheOnGPU && bitmap.image != null)
-		{
-			bitmap.lock();
-			if (bitmap.__texture == null)
-			{
-				bitmap.image.premultiplied = true;
-				bitmap.getTexture(FlxG.stage.context3D);
-			}
-			bitmap.getSurface();
-			bitmap.disposeImage();
-			bitmap.image.data = null;
-			bitmap.image = null;
-			bitmap.readable = true;
-		}
+		promoteBitmapData(bitmap);
 
 		var graph:FlxGraphic = FlxGraphic.fromBitmapData(bitmap, false, key);
 		graph.persist = true;
 		graph.destroyOnNoUse = false;
 
 		currentTrackedAssets.set(key, graph);
-		localTrackedAssets.push(key);
+		tagLocalAsset(key);
 		return graph;
+	}
+
+	static inline function tagLocalAsset(key:String):Void
+	{
+		if (key == null || key.length <= 0)
+			return;
+		localTrackedAssets.set(key, true);
+	}
+
+	public static function promoteGraphic(graphic:FlxGraphic):Void
+	{
+		if (graphic == null)
+			return;
+		promoteBitmapData(graphic.bitmap);
+	}
+
+	public static function promoteBitmapData(bitmap:BitmapData):Void
+	{
+		#if !html5
+		if (!ClientPrefs.cacheOnGPU || bitmap == null || bitmap.image == null)
+			return;
+		bitmap.lock();
+		if (bitmap.__texture == null)
+		{
+			bitmap.image.premultiplied = true;
+			bitmap.getTexture(FlxG.stage.context3D);
+		}
+		bitmap.getSurface();
+		bitmap.disposeImage();
+		bitmap.image.data = null;
+		bitmap.image = null;
+		bitmap.readable = true;
+		#end
 	}
 
 	static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
@@ -832,7 +854,7 @@ class Paths
         #if MODS_ALLOWED
         file = modsSounds(path, key);
         if (currentTrackedSounds.exists(file)) {
-            localTrackedAssets.push(file);
+            tagLocalAsset(file);
             return currentTrackedSounds.get(file);
         } else if (FileSystem.exists(file)) {
             #if lime_vorbis
@@ -863,7 +885,7 @@ class Paths
 				gottenPath = 'songs:' + gottenPath;
 			if (currentTrackedSounds.exists(file))
 			{
-				localTrackedAssets.push(file);
+				tagLocalAsset(file);
 				return currentTrackedSounds.get(file);
 			}
 			else if (OpenFlAssets.exists(gottenPath, SOUND))
@@ -879,7 +901,7 @@ class Paths
 
 		if (sound != null)
 		{
-			localTrackedAssets.push(file);
+			tagLocalAsset(file);
 			currentTrackedSounds.set(file, sound);
 			return sound;
 		}
